@@ -114,9 +114,8 @@ function App() {
     if (activeTab === 'users' && userRole === 'admin') fetchUsersList();
     if (activeTab === 'ledger' && (userRole === 'admin' || userRole === 'manager')) fetchLedger();
   }, [activeTab, userRole]);
-
-  // ==========================================
-  // 3. AUTHENTICATION LOGIC (🔥 HACKER-PROOF SECURE)
+// ==========================================
+  // 3. AUTHENTICATION LOGIC (🔥 STRICT PORTAL CHECK)
   // ==========================================
   const handleAuthChange = (e) => {
     setAuthData({ ...authData, [e.target.name]: e.target.value });
@@ -126,27 +125,39 @@ function App() {
     e.preventDefault();
     const endpoint = showSignup ? 'register' : 'login';
     
-    // 🔥 SECURITY FIX: Naya user kisi bhi tab se account banaye, wo hamesha 'staff' hi banega!
+    // Naya user hamesha 'staff' banega
     const payload = showSignup ? { ...authData, role: 'staff' } : authData;
     
     axios.post(`https://inv-pro-erp.onrender.com/api/${endpoint}`, payload)
       .then(res => {
         if (!showSignup) {
+          // Backend se pata lagao user ki asli aukaat (role) kya hai
+          const actualRole = res.data.role || 'staff';
+          
+          // 🔥 STRICT DOOR CHECK LOGIC 🔥
+          // Agar user ka asli role, uske select kiye hue tab se match nahi karta...
+          if (actualRole !== loginType) {
+            // Toh usko error do aur andar mat aane do!
+            alert(`🛑 Access Denied! Aapka account '${actualRole}' ka hai, par aap '${loginType}' portal se login karne ki koshish kar rahe hain. Kripya sahi tab chunein.`);
+            return; // Code yahin ruk jayega, aage nahi badhega!
+          }
+
+          // Agar darwaza (tab) aur role dono match kar gaye, tabhi login hone do
           localStorage.setItem('token', res.data.token);
           localStorage.setItem('username', res.data.username);
-          // Backend jo role dega, wahi set hoga, tab koi bhi select ho
-          localStorage.setItem('role', res.data.role || 'staff'); 
+          localStorage.setItem('role', actualRole); 
           
           setIsLoggedIn(true);
           setCurrentUser(res.data.username);
-          setUserRole(res.data.role || 'staff');
+          setUserRole(actualRole);
           
           fetchProducts();
           fetchSales();
-          if (res.data.role === 'admin' || res.data.role === 'manager') fetchLedger();
+          if (actualRole === 'admin' || actualRole === 'manager') fetchLedger();
         } else { 
-          alert("Account Created! You have been registered as 'Staff' for security reasons. Please login."); 
+          alert("Account Created! You have been registered as 'Staff' for security reasons. Please login from the Staff tab."); 
           setShowSignup(false); 
+          setLoginType('staff'); // Signup ke baad automatically Staff tab select kar do
         }
       })
       .catch(err => {
@@ -154,13 +165,6 @@ function App() {
         alert(`Error: ${errorMessage}`);
       });
   };
-
-  const handleLogout = () => { 
-    localStorage.clear(); 
-    setIsLoggedIn(false); 
-    window.location.reload(); 
-  };
-
   // ==========================================
   // 4. INVENTORY CRUD LOGIC 
   // ==========================================
