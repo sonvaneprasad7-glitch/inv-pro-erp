@@ -63,6 +63,9 @@ function App() {
   const [authData, setAuthData] = useState({ username: '', password: '' });
   const [currentUser, setCurrentUser] = useState('');
   const [userRole, setUserRole] = useState('staff'); 
+  
+  // NAYA STATE: Mam ke role selection tabs ke liye
+  const [loginType, setLoginType] = useState('admin');
 
   // ==========================================
   // 2. DATA FETCHING FUNCTIONS
@@ -113,7 +116,7 @@ function App() {
   }, [activeTab, userRole]);
 
   // ==========================================
-  // 3. AUTHENTICATION LOGIC (UPDATED WITH ENGLISH ERRORS)
+  // 3. AUTHENTICATION LOGIC
   // ==========================================
   const handleAuthChange = (e) => {
     setAuthData({ ...authData, [e.target.name]: e.target.value });
@@ -123,7 +126,10 @@ function App() {
     e.preventDefault();
     const endpoint = showSignup ? 'register' : 'login';
     
-    axios.post(`https://inv-pro-erp.onrender.com/api/${endpoint}`, authData)
+    // Naya: Agar user register kar raha hai, toh selected role (loginType) bhi backend ko bhejein
+    const payload = showSignup ? { ...authData, role: loginType } : authData;
+    
+    axios.post(`https://inv-pro-erp.onrender.com/api/${endpoint}`, payload)
       .then(res => {
         if (!showSignup) {
           localStorage.setItem('token', res.data.token);
@@ -138,13 +144,11 @@ function App() {
           fetchSales();
           if (res.data.role === 'admin' || res.data.role === 'manager') fetchLedger();
         } else { 
-          // Professional English Success Message
           alert("Signup Successful! You can now log in to your account."); 
           setShowSignup(false); 
         }
       })
       .catch(err => {
-        // Professional English Error Message (Fetches exact error from backend)
         const errorMessage = err.response?.data?.error || "Authentication failed. Please check your network connection.";
         alert(`Error: ${errorMessage}`);
       });
@@ -328,27 +332,73 @@ function App() {
   const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
 
   // ==========================================
-  // RENDER: AUTHENTICATION SCREEN
+  // RENDER: VIP AUTHENTICATION SCREEN
   // ==========================================
   if (!isLoggedIn) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f1f5f9' }}>
-        <div className="glass-card" style={{ width: '380px', textAlign: 'center', padding: '40px' }}>
-          <div style={{ background: '#e0e7ff', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <i className="fas fa-cubes" style={{color:'#4f46e5', fontSize:'24px'}}></i>
+        <div className="glass-card" style={{ width: '400px', textAlign: 'center', padding: '40px' }}>
+          
+          {/* VIP ROLE SELECTION TABS */}
+          {!showSignup && (
+            <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '8px', padding: '4px', marginBottom: '25px' }}>
+              <button 
+                type="button"
+                onClick={() => setLoginType('admin')} 
+                style={{ flex: 1, padding: '8px', border: 'none', background: loginType === 'admin' ? '#ffffff' : 'transparent', borderRadius: '6px', fontWeight: loginType === 'admin' ? 700 : 500, color: loginType === 'admin' ? '#4f46e5' : '#64748b', cursor: 'pointer', boxShadow: loginType === 'admin' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.3s' }}>
+                Admin
+              </button>
+              <button 
+                type="button"
+                onClick={() => setLoginType('manager')} 
+                style={{ flex: 1, padding: '8px', border: 'none', background: loginType === 'manager' ? '#ffffff' : 'transparent', borderRadius: '6px', fontWeight: loginType === 'manager' ? 700 : 500, color: loginType === 'manager' ? '#10b981' : '#64748b', cursor: 'pointer', boxShadow: loginType === 'manager' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.3s' }}>
+                Manager
+              </button>
+              <button 
+                type="button"
+                onClick={() => setLoginType('staff')} 
+                style={{ flex: 1, padding: '8px', border: 'none', background: loginType === 'staff' ? '#ffffff' : 'transparent', borderRadius: '6px', fontWeight: loginType === 'staff' ? 700 : 500, color: loginType === 'staff' ? '#f59e0b' : '#64748b', cursor: 'pointer', boxShadow: loginType === 'staff' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.3s' }}>
+                Staff
+              </button>
+            </div>
+          )}
+
+          {/* DYNAMIC ICONS & COLORS */}
+          <div style={{ 
+            background: showSignup ? '#e0e7ff' : (loginType === 'admin' ? '#e0e7ff' : loginType === 'manager' ? '#dcfce7' : '#fef3c7'), 
+            width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', transition: 'all 0.3s' 
+          }}>
+            <i className={`fas ${showSignup ? 'fa-user-plus' : (loginType === 'admin' ? 'fa-user-shield' : loginType === 'manager' ? 'fa-user-tie' : 'fa-user')}`} 
+               style={{
+                 color: showSignup ? '#4f46e5' : (loginType === 'admin' ? '#4f46e5' : loginType === 'manager' ? '#10b981' : '#f59e0b'), 
+                 fontSize:'24px'
+               }}>
+            </i>
           </div>
-          <h2 style={{margin:'0 0 30px', color:'#0f172a'}}>INV-PRO {showSignup ? "Register" : "Login"}</h2>
+          
+          <h2 style={{margin:'0 0 5px', color:'#0f172a'}}>
+            {showSignup ? "Create New Account" : 
+             loginType === 'admin' ? "Admin Portal" : 
+             loginType === 'manager' ? "Manager Access" : "Staff Login"}
+          </h2>
+          <p style={{fontSize: '0.85rem', color: '#64748b', marginBottom: '25px'}}>
+            {showSignup ? "Register to join the system" : `Please enter your ${loginType} credentials`}
+          </p>
           
           <form onSubmit={handleAuthSubmit} className="pro-form">
-            <input className="pro-input" name="username" placeholder="Username" onChange={handleAuthChange} required />
+            <input className="pro-input" name="username" placeholder={`${loginType.charAt(0).toUpperCase() + loginType.slice(1)} Username`} onChange={handleAuthChange} required />
             <input className="pro-input" name="password" type="password" placeholder="Password" onChange={handleAuthChange} required />
-            <button type="submit" className="btn-primary-pro" style={{marginTop:'10px'}}>
-              {showSignup ? "Create Account" : "Secure Sign In"} <i className="fas fa-arrow-right"></i>
+            <button type="submit" className="btn-primary-pro" style={{
+              marginTop:'10px',
+              background: showSignup ? '#4f46e5' : (loginType === 'admin' ? '#4f46e5' : loginType === 'manager' ? '#10b981' : '#f59e0b'),
+              transition: 'background 0.3s'
+            }}>
+              {showSignup ? "Create Account" : `Login as ${loginType.charAt(0).toUpperCase() + loginType.slice(1)}`} <i className="fas fa-arrow-right"></i>
             </button>
           </form>
           
-          <button onClick={() => setShowSignup(!showSignup)} style={{ marginTop: '25px', background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontWeight: '600' }}>
-            {showSignup ? "Already have an account? Login" : "New User? Create an account"}
+          <button type="button" onClick={() => setShowSignup(!showSignup)} style={{ marginTop: '25px', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>
+            {showSignup ? "Back to Login Portal" : "New User? Request an account"}
           </button>
         </div>
       </div>
@@ -633,7 +683,7 @@ function App() {
         )}
 
         {/* ==========================================
-            TAB 4: NAYA - STOCK LEDGER (PASSBOOK)
+            TAB 4: STOCK LEDGER (PASSBOOK)
         ========================================== */}
         {activeTab === 'ledger' && canExport && (
           <div className="pro-table-card" style={{marginTop: '0'}}>
