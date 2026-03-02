@@ -357,7 +357,7 @@ function App() {
           <div style={{ zIndex: 1, marginBottom: '40px' }}>
             <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.1)', padding: '12px 20px', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.2)', marginBottom: '20px', backdropFilter: 'blur(10px)' }}>
               <i className="fas fa-rocket" style={{ color: '#fbbf24', marginRight: '10px' }}></i>
-              <span style={{ fontSize: '0.9rem', fontWeight: 600, letterSpacing: '1px' }}>ENTERPRISE EDITION 2026</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, letterSpacing: '1px' }}>NEXT-GEN CLOUD ERP</span>
             </div>
             <h1 style={{ fontSize: '4rem', fontWeight: 800, margin: '0 0 20px 0', lineHeight: 1.1 }}>
               INV-PRO <br/><span style={{ color: '#818cf8' }}>ERP System</span>
