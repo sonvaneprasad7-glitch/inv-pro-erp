@@ -115,7 +115,7 @@ function App() {
   }, [activeTab, userRole]);
 
   // ==========================================
-  // 3. AUTHENTICATION LOGIC (PROFESSIONAL ENGLISH ALERTS)
+  // 3. AUTHENTICATION LOGIC 
   // ==========================================
   const handleAuthChange = (e) => {
     setAuthData({ ...authData, [e.target.name]: e.target.value });
@@ -133,7 +133,6 @@ function App() {
           const actualRole = res.data.role || 'staff';
           
           if (actualRole !== loginType) {
-            // 🔥 FIXED: Strictly Professional English Error Message
             alert(`🛑 Access Denied! Your assigned role is '${actualRole.toUpperCase()}', but you are attempting to log in via the '${loginType.toUpperCase()}' portal. Please select the correct tab.`);
             return; 
           }
@@ -150,7 +149,6 @@ function App() {
           fetchSales();
           if (actualRole === 'admin' || actualRole === 'manager') fetchLedger();
         } else { 
-          // 🔥 FIXED: Professional English Success Message
           alert("✅ Account Successfully Created! For security compliance, you have been registered with 'Staff' privileges. Please log in using the Staff portal."); 
           setShowSignup(false); 
           setLoginType('staff'); 
@@ -277,7 +275,6 @@ function App() {
 
     axios.post('https://inv-pro-erp.onrender.com/api/sales', saleForm)
       .then(res => {
-        // 🔥 FIXED: Professional English Sale Success
         alert("✅ Transaction Completed Successfully! Generating official invoice...");
         const newSale = res.data.sale;
         generateInvoice(newSale.id, selectedProduct.name, saleForm.quantity_sold, selectedProduct.price, newSale.total_price);
@@ -293,7 +290,7 @@ function App() {
   };
 
   // ==========================================
-  // 7. ROLE MANAGEMENT LOGIC
+  // 7. ROLE MANAGEMENT
   // ==========================================
   const handleRoleChange = (userId, newRole) => {
     axios.put(`https://inv-pro-erp.onrender.com/api/users/${userId}/role`, { role: newRole })
@@ -302,7 +299,7 @@ function App() {
   };
 
   // ==========================================
-  // 8. EXPORT TO PDF
+  // 8. EXPORT REPORT
   // ==========================================
   const exportToPDF = () => {
     const doc = new jsPDF();
@@ -317,16 +314,10 @@ function App() {
     doc.save("Inventory_Report.pdf");
   };
 
-  // ==========================================
-  // 9. RBAC PERMISSIONS VARIABLES
-  // ==========================================
   const isAdmin = userRole === 'admin';
   const canEdit = userRole === 'admin';
   const canExport = userRole === 'admin' || userRole === 'manager';
 
-  // ==========================================
-  // 10. ANALYTICS DATA CALCULATION
-  // ==========================================
   const categoryCounts = products.reduce((acc, p) => {
     acc[p.category] = (acc[p.category] || 0) + 1;
     return acc;
@@ -341,74 +332,126 @@ function App() {
   const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
 
   // ==========================================
-  // RENDER: VIP AUTHENTICATION SCREEN
+  // RENDER: SPLIT-SCREEN ENTERPRISE LOGIN UI
   // ==========================================
   if (!isLoggedIn) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f1f5f9' }}>
-        <div className="glass-card" style={{ width: '400px', textAlign: 'center', padding: '40px' }}>
-          
-          {/* VIP ROLE SELECTION TABS */}
-          {!showSignup && (
-            <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '8px', padding: '4px', marginBottom: '25px' }}>
-              <button 
-                type="button"
-                onClick={() => setLoginType('admin')} 
-                style={{ flex: 1, padding: '8px', border: 'none', background: loginType === 'admin' ? '#ffffff' : 'transparent', borderRadius: '6px', fontWeight: loginType === 'admin' ? 700 : 500, color: loginType === 'admin' ? '#4f46e5' : '#64748b', cursor: 'pointer', boxShadow: loginType === 'admin' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.3s' }}>
-                Admin
-              </button>
-              <button 
-                type="button"
-                onClick={() => setLoginType('manager')} 
-                style={{ flex: 1, padding: '8px', border: 'none', background: loginType === 'manager' ? '#ffffff' : 'transparent', borderRadius: '6px', fontWeight: loginType === 'manager' ? 700 : 500, color: loginType === 'manager' ? '#10b981' : '#64748b', cursor: 'pointer', boxShadow: loginType === 'manager' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.3s' }}>
-                Manager
-              </button>
-              <button 
-                type="button"
-                onClick={() => setLoginType('staff')} 
-                style={{ flex: 1, padding: '8px', border: 'none', background: loginType === 'staff' ? '#ffffff' : 'transparent', borderRadius: '6px', fontWeight: loginType === 'staff' ? 700 : 500, color: loginType === 'staff' ? '#f59e0b' : '#64748b', cursor: 'pointer', boxShadow: loginType === 'staff' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.3s' }}>
-                Staff
-              </button>
-            </div>
-          )}
-
-          {/* DYNAMIC ICONS & COLORS */}
-          <div style={{ 
-            background: showSignup ? '#e0e7ff' : (loginType === 'admin' ? '#e0e7ff' : loginType === 'manager' ? '#dcfce7' : '#fef3c7'), 
-            width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', transition: 'all 0.3s' 
+      <div style={{ display: 'flex', height: '100vh', width: '100vw', background: '#f8fafc', overflow: 'hidden' }}>
+        
+        {/* LEFT PANEL: Branding & Hero Section */}
+        <div style={{ 
+            flex: 1.2, 
+            background: 'linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%)', 
+            color: 'white', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'center', 
+            padding: '60px 80px', 
+            position: 'relative',
+            overflow: 'hidden'
           }}>
-            <i className={`fas ${showSignup ? 'fa-user-plus' : (loginType === 'admin' ? 'fa-user-shield' : loginType === 'manager' ? 'fa-user-tie' : 'fa-user')}`} 
-               style={{
-                 color: showSignup ? '#4f46e5' : (loginType === 'admin' ? '#4f46e5' : loginType === 'manager' ? '#10b981' : '#f59e0b'), 
-                 fontSize:'24px'
-               }}>
-            </i>
+          {/* Decorative Background Elements */}
+          <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '400px', height: '400px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+          <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '600px', height: '600px', background: 'rgba(255,255,255,0.03)', borderRadius: '50%' }}></div>
+          
+          <div style={{ zIndex: 1, marginBottom: '40px' }}>
+            <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.1)', padding: '12px 20px', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.2)', marginBottom: '20px', backdropFilter: 'blur(10px)' }}>
+              <i className="fas fa-rocket" style={{ color: '#fbbf24', marginRight: '10px' }}></i>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, letterSpacing: '1px' }}>ENTERPRISE EDITION 2026</span>
+            </div>
+            <h1 style={{ fontSize: '4rem', fontWeight: 800, margin: '0 0 20px 0', lineHeight: 1.1 }}>
+              INV-PRO <br/><span style={{ color: '#818cf8' }}>ERP System</span>
+            </h1>
+            <p style={{ fontSize: '1.2rem', color: '#c7d2fe', lineHeight: 1.6, maxWidth: '500px' }}>
+              Next-generation cloud architecture for managing inventory, tracking sales, and strictly controlling access via Role-Based Security.
+            </p>
           </div>
+
+          <div style={{ display: 'flex', gap: '40px', zIndex: 1, marginTop: '20px' }}>
+            <div>
+              <h3 style={{ fontSize: '2.5rem', margin: 0, color: '#10b981' }}>99.9%</h3>
+              <p style={{ margin: 0, color: '#c7d2fe', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Server Uptime</p>
+            </div>
+            <div>
+              <h3 style={{ fontSize: '2.5rem', margin: 0, color: '#f59e0b' }}>256-bit</h3>
+              <p style={{ margin: 0, color: '#c7d2fe', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Encryption</p>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL: The Login Card */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
           
-          <h2 style={{margin:'0 0 5px', color:'#0f172a'}}>
-            {showSignup ? "Create New Account" : 
-             loginType === 'admin' ? "Admin Portal" : 
-             loginType === 'manager' ? "Manager Access" : "Staff Login"}
-          </h2>
-          <p style={{fontSize: '0.85rem', color: '#64748b', marginBottom: '25px'}}>
-            {showSignup ? "Register to join the system" : `Please enter your ${loginType} credentials`}
-          </p>
-          
-          <form onSubmit={handleAuthSubmit} className="pro-form">
-            <input className="pro-input" name="username" placeholder={`${loginType.charAt(0).toUpperCase() + loginType.slice(1)} Username`} onChange={handleAuthChange} required />
-            <input className="pro-input" name="password" type="password" placeholder="Password" onChange={handleAuthChange} required />
-            <button type="submit" className="btn-primary-pro" style={{
-              marginTop:'10px',
-              background: showSignup ? '#4f46e5' : (loginType === 'admin' ? '#4f46e5' : loginType === 'manager' ? '#10b981' : '#f59e0b'),
-              transition: 'background 0.3s'
+          <div className="glass-card" style={{ width: '420px', textAlign: 'center', padding: '50px 40px', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', background: '#ffffff', borderRadius: '16px' }}>
+            
+            {/* VIP ROLE SELECTION TABS */}
+            {!showSignup && (
+              <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '6px', marginBottom: '30px' }}>
+                <button 
+                  type="button"
+                  onClick={() => setLoginType('admin')} 
+                  style={{ flex: 1, padding: '10px', border: 'none', background: loginType === 'admin' ? '#ffffff' : 'transparent', borderRadius: '6px', fontWeight: loginType === 'admin' ? 700 : 600, color: loginType === 'admin' ? '#4f46e5' : '#64748b', cursor: 'pointer', boxShadow: loginType === 'admin' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.3s' }}>
+                  Admin
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setLoginType('manager')} 
+                  style={{ flex: 1, padding: '10px', border: 'none', background: loginType === 'manager' ? '#ffffff' : 'transparent', borderRadius: '6px', fontWeight: loginType === 'manager' ? 700 : 600, color: loginType === 'manager' ? '#10b981' : '#64748b', cursor: 'pointer', boxShadow: loginType === 'manager' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.3s' }}>
+                  Manager
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setLoginType('staff')} 
+                  style={{ flex: 1, padding: '10px', border: 'none', background: loginType === 'staff' ? '#ffffff' : 'transparent', borderRadius: '6px', fontWeight: loginType === 'staff' ? 700 : 600, color: loginType === 'staff' ? '#f59e0b' : '#64748b', cursor: 'pointer', boxShadow: loginType === 'staff' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.3s' }}>
+                  Staff
+                </button>
+              </div>
+            )}
+
+            {/* DYNAMIC ICONS */}
+            <div style={{ 
+              background: showSignup ? '#e0e7ff' : (loginType === 'admin' ? '#e0e7ff' : loginType === 'manager' ? '#dcfce7' : '#fef3c7'), 
+              width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', transition: 'all 0.3s' 
             }}>
-              {showSignup ? "Create Account" : `Login as ${loginType.charAt(0).toUpperCase() + loginType.slice(1)}`} <i className="fas fa-arrow-right"></i>
+              <i className={`fas ${showSignup ? 'fa-user-plus' : (loginType === 'admin' ? 'fa-user-shield' : loginType === 'manager' ? 'fa-user-tie' : 'fa-user')}`} 
+                 style={{
+                   color: showSignup ? '#4f46e5' : (loginType === 'admin' ? '#4f46e5' : loginType === 'manager' ? '#10b981' : '#f59e0b'), 
+                   fontSize:'28px'
+                 }}>
+              </i>
+            </div>
+            
+            <h2 style={{margin:'0 0 8px', color:'#0f172a', fontSize: '1.6rem', fontWeight: 800}}>
+              {showSignup ? "Create Account" : 
+               loginType === 'admin' ? "Admin Portal" : 
+               loginType === 'manager' ? "Manager Access" : "Staff Login"}
+            </h2>
+            <p style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '30px'}}>
+              {showSignup ? "Securely register to the system network" : `Please authenticate with your ${loginType} credentials`}
+            </p>
+            
+            <form onSubmit={handleAuthSubmit} className="pro-form" style={{ gap: '15px' }}>
+              <div style={{ position: 'relative' }}>
+                <i className="fas fa-envelope" style={{ position: 'absolute', left: '15px', top: '15px', color: '#94a3b8' }}></i>
+                <input className="pro-input" name="username" placeholder={`${loginType.charAt(0).toUpperCase() + loginType.slice(1)} ID`} onChange={handleAuthChange} required style={{ paddingLeft: '40px', height: '45px' }} />
+              </div>
+              <div style={{ position: 'relative' }}>
+                <i className="fas fa-lock" style={{ position: 'absolute', left: '15px', top: '15px', color: '#94a3b8' }}></i>
+                <input className="pro-input" name="password" type="password" placeholder="Secure Password" onChange={handleAuthChange} required style={{ paddingLeft: '40px', height: '45px' }} />
+              </div>
+              <button type="submit" className="btn-primary-pro" style={{
+                marginTop:'10px', height: '48px', fontSize: '1rem',
+                background: showSignup ? '#4f46e5' : (loginType === 'admin' ? '#4f46e5' : loginType === 'manager' ? '#10b981' : '#f59e0b'),
+                transition: 'background 0.3s'
+              }}>
+                {showSignup ? "Register User" : `Secure Login`} <i className="fas fa-arrow-right"></i>
+              </button>
+            </form>
+            
+            <button type="button" onClick={() => setShowSignup(!showSignup)} style={{ marginTop: '30px', background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem' }}>
+              {showSignup ? "← Back to Login Portal" : "New User? Request Access"}
             </button>
-          </form>
-          
-          <button type="button" onClick={() => setShowSignup(!showSignup)} style={{ marginTop: '25px', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>
-            {showSignup ? "Back to Login Portal" : "New User? Request an account"}
-          </button>
+          </div>
         </div>
       </div>
     );
