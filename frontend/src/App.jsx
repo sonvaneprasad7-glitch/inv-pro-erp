@@ -36,7 +36,7 @@ function App() {
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]); 
   const [usersList, setUsersList] = useState([]); 
-  const [ledgerData, setLedgerData] = useState([]); // NAYA STATE LEDGER KE LIYE
+  const [ledgerData, setLedgerData] = useState([]); 
   
   const [activeTab, setActiveTab] = useState('dashboard'); 
   
@@ -68,25 +68,25 @@ function App() {
   // 2. DATA FETCHING FUNCTIONS
   // ==========================================
   const fetchProducts = () => {
-    axios.get('http://localhost:5000/api/products')
+    axios.get('https://inv-pro-erp.onrender.com/api/products')
       .then(res => setProducts(res.data))
       .catch(err => console.error("Error fetching products:", err));
   };
 
   const fetchSales = () => {
-    axios.get('http://localhost:5000/api/sales')
+    axios.get('https://inv-pro-erp.onrender.com/api/sales')
       .then(res => setSales(res.data))
       .catch(err => console.error("Error fetching sales:", err));
   };
 
   const fetchUsersList = () => {
-    axios.get('http://localhost:5000/api/users')
+    axios.get('https://inv-pro-erp.onrender.com/api/users')
       .then(res => setUsersList(res.data))
       .catch(err => console.error("Error fetching users:", err));
   };
 
   const fetchLedger = () => {
-    axios.get('http://localhost:5000/api/ledger')
+    axios.get('https://inv-pro-erp.onrender.com/api/ledger')
       .then(res => setLedgerData(res.data))
       .catch(err => console.error("Error fetching ledger:", err));
   };
@@ -101,7 +101,6 @@ function App() {
       setUserRole(role || 'staff');
       fetchProducts();
       fetchSales(); 
-      // Agar role admin ya manager hai, toh ledger bhi load karo
       if (role === 'admin' || role === 'manager') {
         fetchLedger();
       }
@@ -114,7 +113,7 @@ function App() {
   }, [activeTab, userRole]);
 
   // ==========================================
-  // 3. AUTHENTICATION LOGIC
+  // 3. AUTHENTICATION LOGIC (UPDATED WITH ENGLISH ERRORS)
   // ==========================================
   const handleAuthChange = (e) => {
     setAuthData({ ...authData, [e.target.name]: e.target.value });
@@ -124,7 +123,7 @@ function App() {
     e.preventDefault();
     const endpoint = showSignup ? 'register' : 'login';
     
-    axios.post(`http://localhost:5000/api/${endpoint}`, authData)
+    axios.post(`https://inv-pro-erp.onrender.com/api/${endpoint}`, authData)
       .then(res => {
         if (!showSignup) {
           localStorage.setItem('token', res.data.token);
@@ -139,12 +138,15 @@ function App() {
           fetchSales();
           if (res.data.role === 'admin' || res.data.role === 'manager') fetchLedger();
         } else { 
-          alert("Signup Successful! Ab aap login kar sakte hain."); 
+          // Professional English Success Message
+          alert("Signup Successful! You can now log in to your account."); 
           setShowSignup(false); 
         }
       })
       .catch(err => {
-        alert("Error: Galat Username/Password ya User pehle se hai!");
+        // Professional English Error Message (Fetches exact error from backend)
+        const errorMessage = err.response?.data?.error || "Authentication failed. Please check your network connection.";
+        alert(`Error: ${errorMessage}`);
       });
   };
 
@@ -155,13 +157,13 @@ function App() {
   };
 
   // ==========================================
-  // 4. INVENTORY CRUD LOGIC (Admin Only)
+  // 4. INVENTORY CRUD LOGIC 
   // ==========================================
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (userRole !== 'admin') {
-      return alert("Aapko ye karne ki permission nahi hai!");
+      return alert("Permission Denied: You do not have access to perform this action.");
     }
 
     const data = new FormData();
@@ -180,14 +182,14 @@ function App() {
     const config = { headers: { 'Content-Type': 'multipart/form-data' } };
 
     if (editingId) {
-      axios.put(`http://localhost:5000/api/products/${editingId}`, data, config)
+      axios.put(`https://inv-pro-erp.onrender.com/api/products/${editingId}`, data, config)
         .then(() => { 
           fetchProducts(); 
           if(userRole === 'admin' || userRole === 'manager') fetchLedger();
           resetForm(); 
         });
     } else {
-      axios.post('http://localhost:5000/api/products', data, config)
+      axios.post('https://inv-pro-erp.onrender.com/api/products', data, config)
         .then(() => { 
           fetchProducts(); 
           if(userRole === 'admin' || userRole === 'manager') fetchLedger();
@@ -204,8 +206,8 @@ function App() {
 
   const handleDelete = (id) => {
     if (userRole !== 'admin') return alert("Permission Denied!");
-    if(window.confirm("Kaya aap sach mein is item ko delete karna chahte hain?")) {
-      axios.delete(`http://localhost:5000/api/products/${id}`)
+    if(window.confirm("Are you sure you want to permanently delete this item?")) {
+      axios.delete(`https://inv-pro-erp.onrender.com/api/products/${id}`)
         .then(() => fetchProducts());
     }
   };
@@ -261,7 +263,7 @@ function App() {
     e.preventDefault();
     const selectedProduct = products.find(p => p.id === parseInt(saleForm.product_id));
 
-    axios.post('http://localhost:5000/api/sales', saleForm)
+    axios.post('https://inv-pro-erp.onrender.com/api/sales', saleForm)
       .then(res => {
         alert("🎉 Item Sold Successfully! Generating Bill...");
         const newSale = res.data.sale;
@@ -273,7 +275,7 @@ function App() {
         setSaleForm({ product_id: '', quantity_sold: '' });
       })
       .catch(err => {
-        alert(err.response?.data?.error || "Sale karne mein error aayi!");
+        alert(err.response?.data?.error || "Error processing sale!");
       });
   };
 
@@ -281,7 +283,7 @@ function App() {
   // 7. ROLE MANAGEMENT LOGIC
   // ==========================================
   const handleRoleChange = (userId, newRole) => {
-    axios.put(`http://localhost:5000/api/users/${userId}/role`, { role: newRole })
+    axios.put(`https://inv-pro-erp.onrender.com/api/users/${userId}/role`, { role: newRole })
       .then(() => { alert("User Role Updated Successfully!"); fetchUsersList(); })
       .catch(() => alert("Error updating role"));
   };
@@ -307,7 +309,7 @@ function App() {
   // ==========================================
   const isAdmin = userRole === 'admin';
   const canEdit = userRole === 'admin';
-  const canExport = userRole === 'admin' || userRole === 'manager'; // Only Admin & Manager can see Reports/Ledger
+  const canExport = userRole === 'admin' || userRole === 'manager';
 
   // ==========================================
   // 10. ANALYTICS DATA CALCULATION
@@ -388,7 +390,6 @@ function App() {
             </div>
           )}
 
-          {/* NAYA: LEDGER TAB (ONLY ADMIN/MANAGER) */}
           {canExport && (
             <div className={`nav-item ${activeTab === 'ledger' ? 'active' : ''}`} onClick={() => setActiveTab('ledger')}>
               <i className="fas fa-book"></i> Stock Ledger
@@ -530,7 +531,7 @@ function App() {
                     <tr key={p.id}>
                       <td style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                         {p.image_url ? (
-                          <img src={`http://localhost:5000${p.image_url}`} style={{width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover'}} alt="img" />
+                          <img src={`https://inv-pro-erp.onrender.com${p.image_url}`} style={{width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover'}} alt="img" />
                         ) : (
                           <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}><i className="fas fa-image" style={{fontSize: '0.8rem'}}></i></div>
                         )}
@@ -673,7 +674,6 @@ function App() {
                       </span>
                     </td>
                     <td>
-                      {/* Agar Plus hai toh Green, Minus hai toh Red */}
                       <span style={{
                         color: log.quantity_changed > 0 ? '#10b981' : '#ef4444',
                         fontWeight: 800
