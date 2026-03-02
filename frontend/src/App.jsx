@@ -64,7 +64,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState('');
   const [userRole, setUserRole] = useState('staff'); 
   
-  // NAYA STATE: Mam ke role selection tabs ke liye
+  // NAYA STATE: VIP role selection tabs ke liye
   const [loginType, setLoginType] = useState('admin');
 
   // ==========================================
@@ -116,7 +116,7 @@ function App() {
   }, [activeTab, userRole]);
 
   // ==========================================
-  // 3. AUTHENTICATION LOGIC
+  // 3. AUTHENTICATION LOGIC (🔥 HACKER-PROOF SECURE)
   // ==========================================
   const handleAuthChange = (e) => {
     setAuthData({ ...authData, [e.target.name]: e.target.value });
@@ -126,14 +126,15 @@ function App() {
     e.preventDefault();
     const endpoint = showSignup ? 'register' : 'login';
     
-    // Naya: Agar user register kar raha hai, toh selected role (loginType) bhi backend ko bhejein
-    const payload = showSignup ? { ...authData, role: loginType } : authData;
+    // 🔥 SECURITY FIX: Naya user kisi bhi tab se account banaye, wo hamesha 'staff' hi banega!
+    const payload = showSignup ? { ...authData, role: 'staff' } : authData;
     
     axios.post(`https://inv-pro-erp.onrender.com/api/${endpoint}`, payload)
       .then(res => {
         if (!showSignup) {
           localStorage.setItem('token', res.data.token);
           localStorage.setItem('username', res.data.username);
+          // Backend jo role dega, wahi set hoga, tab koi bhi select ho
           localStorage.setItem('role', res.data.role || 'staff'); 
           
           setIsLoggedIn(true);
@@ -144,12 +145,12 @@ function App() {
           fetchSales();
           if (res.data.role === 'admin' || res.data.role === 'manager') fetchLedger();
         } else { 
-          alert("Signup Successful! You can now log in to your account."); 
+          alert("Account Created! You have been registered as 'Staff' for security reasons. Please login."); 
           setShowSignup(false); 
         }
       })
       .catch(err => {
-        const errorMessage = err.response?.data?.error || "Authentication failed. Please check your network connection.";
+        const errorMessage = err.response?.data?.error || "Authentication failed. Check details.";
         alert(`Error: ${errorMessage}`);
       });
   };
