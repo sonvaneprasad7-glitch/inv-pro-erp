@@ -31,7 +31,7 @@ ChartJS.register(
 
 function App() {
   // ==========================================
-  // 1. ALL STATES (No Shortcuts)
+  // 1. ALL STATES
   // ==========================================
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]); 
@@ -64,7 +64,6 @@ function App() {
   const [currentUser, setCurrentUser] = useState('');
   const [userRole, setUserRole] = useState('staff'); 
   
-  // NAYA STATE: VIP role selection tabs ke liye
   const [loginType, setLoginType] = useState('admin');
 
   // ==========================================
@@ -114,8 +113,9 @@ function App() {
     if (activeTab === 'users' && userRole === 'admin') fetchUsersList();
     if (activeTab === 'ledger' && (userRole === 'admin' || userRole === 'manager')) fetchLedger();
   }, [activeTab, userRole]);
-// ==========================================
-  // 3. AUTHENTICATION LOGIC (🔥 STRICT PORTAL CHECK)
+
+  // ==========================================
+  // 3. AUTHENTICATION LOGIC (PROFESSIONAL ENGLISH ALERTS)
   // ==========================================
   const handleAuthChange = (e) => {
     setAuthData({ ...authData, [e.target.name]: e.target.value });
@@ -125,24 +125,19 @@ function App() {
     e.preventDefault();
     const endpoint = showSignup ? 'register' : 'login';
     
-    // Naya user hamesha 'staff' banega
     const payload = showSignup ? { ...authData, role: 'staff' } : authData;
     
     axios.post(`https://inv-pro-erp.onrender.com/api/${endpoint}`, payload)
       .then(res => {
         if (!showSignup) {
-          // Backend se pata lagao user ki asli aukaat (role) kya hai
           const actualRole = res.data.role || 'staff';
           
-          // 🔥 STRICT DOOR CHECK LOGIC 🔥
-          // Agar user ka asli role, uske select kiye hue tab se match nahi karta...
           if (actualRole !== loginType) {
-            // Toh usko error do aur andar mat aane do!
-            alert(`🛑 Access Denied! Aapka account '${actualRole}' ka hai, par aap '${loginType}' portal se login karne ki koshish kar rahe hain. Kripya sahi tab chunein.`);
-            return; // Code yahin ruk jayega, aage nahi badhega!
+            // 🔥 FIXED: Strictly Professional English Error Message
+            alert(`🛑 Access Denied! Your assigned role is '${actualRole.toUpperCase()}', but you are attempting to log in via the '${loginType.toUpperCase()}' portal. Please select the correct tab.`);
+            return; 
           }
 
-          // Agar darwaza (tab) aur role dono match kar gaye, tabhi login hone do
           localStorage.setItem('token', res.data.token);
           localStorage.setItem('username', res.data.username);
           localStorage.setItem('role', actualRole); 
@@ -155,16 +150,24 @@ function App() {
           fetchSales();
           if (actualRole === 'admin' || actualRole === 'manager') fetchLedger();
         } else { 
-          alert("Account Created! You have been registered as 'Staff' for security reasons. Please login from the Staff tab."); 
+          // 🔥 FIXED: Professional English Success Message
+          alert("✅ Account Successfully Created! For security compliance, you have been registered with 'Staff' privileges. Please log in using the Staff portal."); 
           setShowSignup(false); 
-          setLoginType('staff'); // Signup ke baad automatically Staff tab select kar do
+          setLoginType('staff'); 
         }
       })
       .catch(err => {
-        const errorMessage = err.response?.data?.error || "Authentication failed. Check details.";
-        alert(`Error: ${errorMessage}`);
+        const errorMessage = err.response?.data?.error || "Authentication failed. Please check your credentials and try again.";
+        alert(`❌ System Error: ${errorMessage}`);
       });
   };
+
+  const handleLogout = () => { 
+    localStorage.clear(); 
+    setIsLoggedIn(false); 
+    window.location.reload(); 
+  };
+
   // ==========================================
   // 4. INVENTORY CRUD LOGIC 
   // ==========================================
@@ -172,7 +175,7 @@ function App() {
     e.preventDefault();
     
     if (userRole !== 'admin') {
-      return alert("Permission Denied: You do not have access to perform this action.");
+      return alert("🛑 Permission Denied: You do not have the required administrative privileges to perform this action.");
     }
 
     const data = new FormData();
@@ -214,8 +217,8 @@ function App() {
   };
 
   const handleDelete = (id) => {
-    if (userRole !== 'admin') return alert("Permission Denied!");
-    if(window.confirm("Are you sure you want to permanently delete this item?")) {
+    if (userRole !== 'admin') return alert("🛑 Permission Denied: Administrative access required.");
+    if(window.confirm("⚠️ System Warning: Are you sure you want to permanently delete this record? This action cannot be undone.")) {
       axios.delete(`https://inv-pro-erp.onrender.com/api/products/${id}`)
         .then(() => fetchProducts());
     }
@@ -274,7 +277,8 @@ function App() {
 
     axios.post('https://inv-pro-erp.onrender.com/api/sales', saleForm)
       .then(res => {
-        alert("🎉 Item Sold Successfully! Generating Bill...");
+        // 🔥 FIXED: Professional English Sale Success
+        alert("✅ Transaction Completed Successfully! Generating official invoice...");
         const newSale = res.data.sale;
         generateInvoice(newSale.id, selectedProduct.name, saleForm.quantity_sold, selectedProduct.price, newSale.total_price);
 
@@ -284,7 +288,7 @@ function App() {
         setSaleForm({ product_id: '', quantity_sold: '' });
       })
       .catch(err => {
-        alert(err.response?.data?.error || "Error processing sale!");
+        alert(`❌ System Error: ${err.response?.data?.error || "Failed to process the transaction."}`);
       });
   };
 
@@ -293,8 +297,8 @@ function App() {
   // ==========================================
   const handleRoleChange = (userId, newRole) => {
     axios.put(`https://inv-pro-erp.onrender.com/api/users/${userId}/role`, { role: newRole })
-      .then(() => { alert("User Role Updated Successfully!"); fetchUsersList(); })
-      .catch(() => alert("Error updating role"));
+      .then(() => { alert("✅ User Role Updated Successfully!"); fetchUsersList(); })
+      .catch(() => alert("❌ Server Error: Failed to update user role."));
   };
 
   // ==========================================
