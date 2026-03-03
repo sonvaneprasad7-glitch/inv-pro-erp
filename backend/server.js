@@ -3,35 +3,44 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const path = require('path');
 require('dotenv').config();
+
+// 🔥 NAYE CLOUDINARY PACKAGES 🔥
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Images ko serve karne ke liye static folder
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// ===================================================
+// CLOUDINARY CONFIGURATION (ENTERPRISE IMAGE HOSTING)
+// ===================================================
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'inv_pro_products', // Cloudinary mein is naam se folder banega
+    allowed_formats: ['jpg', 'png', 'jpeg', 'webp']
+  },
+});
+const upload = multer({ storage: storage });
 
 // ===================================================
-// NAYA FIX: NEON DB LIVE CONNECTION WITH SSL
+// NEON DB LIVE CONNECTION WITH SSL
 // ===================================================
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false // Neon DB ke liye ye zaruri hai
+    rejectUnauthorized: false
   }
 });
-
-// Multer Configuration for Image Storage
-const storage = multer.diskStorage({
-  destination: './uploads/',
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage: storage });
 
 // ===================================================
 // 1. AUTH ROUTES
@@ -79,7 +88,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ===================================================
-// 2. PRODUCT ROUTES (With Ledger Tracking)
+// 2. PRODUCT ROUTES (With Ledger Tracking & Cloudinary)
 // ===================================================
 app.get('/api/products', async (req, res) => {
   try {
@@ -93,9 +102,10 @@ app.get('/api/products', async (req, res) => {
 app.post('/api/products', upload.single('image'), async (req, res) => {
   try {
     const { name, sku, category, quantity, price } = req.body;
-    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
     
-    // Naya product banaya
+    // 🔥 CLOUDINARY LOGIC: req.file.path mein Cloudinary ka permanent URL aata hai
+    const image_url = req.file ? req.file.path : null;
+    
     const newProduct = await pool.query(
       "INSERT INTO products (name, sku, category, quantity, price, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
       [name, sku, category, quantity, price, image_url]
@@ -103,7 +113,6 @@ app.post('/api/products', upload.single('image'), async (req, res) => {
     
     const product = newProduct.rows[0];
 
-    // Ledger mein entry daali ki "Naya stock aaya hai"
     if (product.quantity > 0) {
       await pool.query(
         "INSERT INTO stock_ledger (product_id, transaction_type, quantity_changed, running_balance, notes) VALUES ($1, $2, $3, $4, $5)",
@@ -123,22 +132,21 @@ app.put('/api/products/:id', upload.single('image'), async (req, res) => {
     const { name, sku, category, quantity, price } = req.body;
     
     let image_url = req.body.image_url; 
+    
+    // 🔥 CLOUDINARY LOGIC: Agar nayi photo upload hui hai toh naya URL le lo
     if (req.file) {
-      image_url = `/uploads/${req.file.filename}`;
+      image_url = req.file.path;
     }
 
-    // Purana data nikalenge taaki check karein quantity badli ya nahi
     const oldProduct = await pool.query("SELECT quantity FROM products WHERE id = $1", [id]);
     const oldQty = oldProduct.rows[0].quantity;
     const newQty = parseInt(quantity);
 
-    // Update product
     const updateProduct = await pool.query(
       "UPDATE products SET name = $1, sku = $2, category = $3, quantity = $4, price = $5, image_url = $6 WHERE id = $7 RETURNING *",
       [name, sku, category, quantity, price, image_url, id]
     );
     
-    // Agar quantity badli hai, toh Ledger mein note likhenge
     const diff = newQty - oldQty;
     if (diff !== 0) {
       const type = diff > 0 ? 'IN - MANUAL UPDATE' : 'OUT - MANUAL UPDATE';
@@ -170,7 +178,7 @@ app.post('/api/sales', async (req, res) => {
   const client = await pool.connect();
   
   try {
-    await client.query('BEGIN'); // TRANSACTION SHURU
+    await client.query('BEGIN'); 
 
     const { product_id, quantity_sold } = req.body;
     
@@ -187,13 +195,11 @@ app.post('/api/sales', async (req, res) => {
     
     const total_price = product.price * quantity_sold;
     
-    // 1. Record Sale
     const newSale = await client.query(
       "INSERT INTO sales (product_id, quantity_sold, total_price) VALUES ($1, $2, $3) RETURNING *",
       [product_id, quantity_sold, total_price]
     );
     
-    // 2. Deduct Quantity
     const updatedProduct = await client.query(
       "UPDATE products SET quantity = quantity - $1 WHERE id = $2 RETURNING quantity", 
       [quantity_sold, product_id]
@@ -201,21 +207,20 @@ app.post('/api/sales', async (req, res) => {
 
     const newBalance = updatedProduct.rows[0].quantity;
 
-    // 3. Stock Ledger Entry (Passbook)
     await client.query(
       "INSERT INTO stock_ledger (product_id, transaction_type, quantity_changed, running_balance, notes) VALUES ($1, $2, $3, $4, $5)",
       [product_id, 'OUT - SALE', -quantity_sold, newBalance, `Sale Invoice #INV-${newSale.rows[0].id.toString().padStart(4, '0')}`]
     );
     
-    await client.query('COMMIT'); // AGAR SAB SAHI HUA TOH SAVE KARO
+    await client.query('COMMIT'); 
     
     res.json({ message: "Sale successful!", sale: newSale.rows[0] });
   } catch (err) { 
-    await client.query('ROLLBACK'); // AGAR ERROR AAYA TOH UNDO KAR DO
+    await client.query('ROLLBACK'); 
     console.error("Sale Error:", err.message);
     res.status(400).json({ error: err.message }); 
   } finally {
-    client.release(); // Connection wapas chhod do
+    client.release(); 
   }
 });
 
