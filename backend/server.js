@@ -16,14 +16,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🟢 Cloudinary Connection Verification Logs
+// 🟢 Cloudinary Connection Status Logs (Enterprise Security Check)
 console.log("--- Cloudinary Integration Status ---");
-console.log("Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME ? "Active ✅" : "Missing ❌");
-console.log("API Key:", process.env.CLOUDINARY_API_KEY ? "Active ✅" : "Missing ❌");
+console.log("Cloud Name Configured:", process.env.CLOUDINARY_CLOUD_NAME ? "Mila ✅" : "Nahi Mila ❌");
+console.log("API Key Configured:", process.env.CLOUDINARY_API_KEY ? "Mili ✅" : "Nahi Mili ❌");
 console.log("-------------------------------------");
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, // Should be 'dtlpid2o1' in Render env
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
@@ -33,13 +33,14 @@ const storage = new CloudinaryStorage({
   params: {
     folder: 'inv_pro_products', // Cloudinary folder name
     allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
-    transformation: [{ width: 500, height: 500, crop: 'limit' }] // Professional resizing
+    // 👇 YAHAN FIX KIYA HAI: AB IMAGE CUT NAHI HOGI, BAS RESIZE HOGI 👇
+    transformation: [{ width: 800, height: 800, crop: 'scale' }] 
   },
 });
 const upload = multer({ storage: storage });
 
 // ===================================================
-// DATABASE: NEON POSTGRESQL CONNECTION
+// DATABASE: NEON POSTGRESQL CONNECTION (SSL Enabled)
 // ===================================================
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -47,10 +48,10 @@ const pool = new Pool({
 });
 
 // ===================================================
-// 1. AUTHENTICATION MODULE (Security)
+// 1. AUTHENTICATION MODULE (Security RBAC)
 // ===================================================
 
-// User Registration
+// User Registration Route
 app.post('/api/register', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -62,11 +63,11 @@ app.post('/api/register', async (req, res) => {
     res.status(201).json(newUser.rows[0]);
   } catch (err) { 
     console.error("Auth Register Error:", err.message);
-    res.status(500).json({ error: "Username already exists or system error." }); 
+    res.status(500).json({ error: "System failure during registration." }); 
   }
 });
 
-// User Login
+// User Login Route
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -81,7 +82,7 @@ app.post('/api/login', async (req, res) => {
     res.json({ token, username: user.rows[0].username, role: user.rows[0].role });
   } catch (err) { 
     console.error("Auth Login Error:", err.message);
-    res.status(500).json({ error: "Login system failure." }); 
+    res.status(500).json({ error: "Authentication system failure." }); 
   }
 });
 
@@ -89,18 +90,18 @@ app.post('/api/login', async (req, res) => {
 // 2. PRODUCT & INVENTORY MODULE
 // ===================================================
 
-// Fetch All Products
+// Fetch All Products Route
 app.get('/api/products', async (req, res) => {
   try {
     const allProducts = await pool.query("SELECT * FROM products ORDER BY id DESC");
     res.json(allProducts.rows);
   } catch (err) { 
     console.error("Fetch Products Error:", err.message);
-    res.status(500).json({ error: "Could not fetch inventory." }); 
+    res.status(500).json({ error: "Database fetch error." }); 
   }
 });
 
-// Create New Product (With Cloudinary Upload)
+// Create New Product (With Optimized Cloudinary Upload)
 app.post('/api/products', upload.single('image'), async (req, res) => {
   try {
     const { name, sku, category, quantity, price } = req.body;
@@ -113,26 +114,26 @@ app.post('/api/products', upload.single('image'), async (req, res) => {
     
     const product = newProduct.rows[0];
 
-    // Log this addition in Stock Ledger
+    // Log this addition in Stock Ledger Audit Trail
     if (product.quantity > 0) {
       await pool.query(
         "INSERT INTO stock_ledger (product_id, transaction_type, quantity_changed, running_balance, notes) VALUES ($1, $2, $3, $4, $5)",
-        [product.id, 'IN - NEW STOCK', product.quantity, product.quantity, 'Initial inventory added via Admin Panel']
+        [product.id, 'IN - NEW STOCK', product.quantity, product.quantity, 'Initial stock added by Administrator']
       );
     }
     res.status(201).json(product);
   } catch (err) { 
-    // 🔥 Detailed Error Handling (Slaying the [object Object] dragon)
+    // 🔥 Detailed Error Handling (For Enterprise Logs)
     console.error("PRODUCT POST FAILURE:", err); 
     res.status(500).json({ 
-      error: "Cloudinary/Database Sync Failed", 
-      message: err.message,
-      tip: "Please check if your CLOUDINARY_CLOUD_NAME is 'dtlpid2o1' and not 'Root'."
+      error: "Product creation failed.", 
+      details: err.message,
+      check: "Confirm Cloudinary configuration in Render settings."
     }); 
   }
 });
 
-// Update Product
+// Update Product Route
 app.put('/api/products/:id', upload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -142,6 +143,7 @@ app.put('/api/products/:id', upload.single('image'), async (req, res) => {
     if (req.file) image_url = req.file.path;
 
     const oldProduct = await pool.query("SELECT quantity FROM products WHERE id = $1", [id]);
+    if (oldProduct.rows.length === 0) return res.status(404).json({ error: "Product not found" });
     const oldQty = oldProduct.rows[0].quantity;
     const newQty = parseInt(quantity);
 
@@ -150,49 +152,48 @@ app.put('/api/products/:id', upload.single('image'), async (req, res) => {
       [name, sku, category, quantity, price, image_url, id]
     );
     
-    // Ledger Tracking for Manual Updates
+    // Ledger Tracking for Manual Quantity Updates
     const diff = newQty - oldQty;
     if (diff !== 0) {
       const type = diff > 0 ? 'IN - MANUAL UPDATE' : 'OUT - MANUAL UPDATE';
       await pool.query(
         "INSERT INTO stock_ledger (product_id, transaction_type, quantity_changed, running_balance, notes) VALUES ($1, $2, $3, $4, $5)",
-        [id, type, diff, newQty, 'Manual stock adjustment by Administrator']
+        [id, type, diff, newQty, 'Manual quantity adjustment via Admin Panel']
       );
     }
     res.json(updateProduct.rows[0]);
   } catch (err) { 
     console.error("Product Update Error:", err);
-    res.status(500).json({ error: "Failed to update product." }); 
+    res.status(500).json({ error: "Update system failure." }); 
   }
 });
 
-// Delete Product
+// Delete Product Route
 app.delete('/api/products/:id', async (req, res) => {
   try {
     await pool.query("DELETE FROM products WHERE id = $1", [req.params.id]);
-    res.json({ message: "Product record and history removed." });
+    res.json({ message: "Product record and audit ledger removed." });
   } catch (err) { 
     console.error("Delete Error:", err.message);
-    res.status(500).json({ error: "Deletion failed." }); 
+    res.status(500).json({ error: "Database deletion failed." }); 
   }
 });
 
 // ===================================================
-// 3. SALES & TRANSACTIONS MODULE (Professional Loop)
+// 3. SALES MODULE (Enterprise Transactional Loop)
 // ===================================================
-
 app.post('/api/sales', async (req, res) => {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN'); // Start SQL Transaction
+    await client.query('BEGIN'); // Start atomic SQL Transaction
 
     const { product_id, quantity_sold } = req.body;
     const productRes = await client.query("SELECT * FROM products WHERE id = $1", [product_id]);
     
-    if (productRes.rows.length === 0) throw new Error("Product data not found in catalog.");
+    if (productRes.rows.length === 0) throw new Error("Product data mismatch during transaction.");
     
     const product = productRes.rows[0];
-    if (product.quantity < quantity_sold) throw new Error("Insufficient stock to fulfill this order.");
+    if (product.quantity < quantity_sold) throw new Error("Insufficient stock available.");
     
     const total_price = product.price * quantity_sold;
     
@@ -202,30 +203,30 @@ app.post('/api/sales', async (req, res) => {
       [product_id, quantity_sold, total_price]
     );
     
-    // 2. Adjust Stock Inventory
+    // 2. Adjust Stock Quantity
     const updatedProduct = await client.query(
       "UPDATE products SET quantity = quantity - $1 WHERE id = $2 RETURNING quantity", 
       [quantity_sold, product_id]
     );
 
-    // 3. Update Audit Ledger (Passbook)
+    // 3. Log into Audit Ledger (Passbook Entry)
     await client.query(
       "INSERT INTO stock_ledger (product_id, transaction_type, quantity_changed, running_balance, notes) VALUES ($1, $2, $3, $4, $5)",
-      [product_id, 'OUT - SALE', -quantity_sold, updatedProduct.rows[0].quantity, `Automated Sale Entry #INV-${newSale.rows[0].id}`]
+      [product_id, 'OUT - SALE', -quantity_sold, updatedProduct.rows[0].quantity, `Sale Transaction #INV-${newSale.rows[0].id}`]
     );
     
     await client.query('COMMIT'); 
-    res.status(201).json({ message: "Transaction processed successfully.", sale: newSale.rows[0] });
+    res.status(201).json({ message: "Transaction successful.", sale: newSale.rows[0] });
   } catch (err) { 
-    await client.query('ROLLBACK'); // Safety first
-    console.error("Transaction Error:", err.message);
+    await client.query('ROLLBACK'); // Critical rollback on failure
+    console.error("Sales Transaction Error:", err.message);
     res.status(400).json({ error: err.message }); 
   } finally {
     client.release(); 
   }
 });
 
-// Fetch Sales History for Reports
+// Fetch Sales History Route (for Reporting)
 app.get('/api/sales', async (req, res) => {
   try {
     const allSales = await pool.query(`
@@ -235,11 +236,11 @@ app.get('/api/sales', async (req, res) => {
       ORDER BY s.sale_date DESC
     `);
     res.json(allSales.rows);
-  } catch (err) { res.status(500).json({ error: "Reporting error." }); }
+  } catch (err) { res.status(500).json({ error: "Reporting fetch failure." }); }
 });
 
 // ===================================================
-// 4. MASTER LEDGER (AUDIT TRAIL)
+// 4. AUDIT LEDGER (FULL AUDIT TRAIL)
 // ===================================================
 app.get('/api/ledger', async (req, res) => {
   try {
@@ -250,11 +251,11 @@ app.get('/api/ledger', async (req, res) => {
       ORDER BY l.created_at DESC
     `);
     res.json(ledger.rows);
-  } catch (err) { res.status(500).json({ error: "Ledger fetch failure." }); }
+  } catch (err) { res.status(500).json({ error: "Auditing fetch failure." }); }
 });
 
 // ===================================================
-// 5. USER MANAGEMENT (RBAC Settings)
+// 5. USER MANAGEMENT (System Settings)
 // ===================================================
 app.get('/api/users', async (req, res) => {
   try {
@@ -276,7 +277,7 @@ app.put('/api/users/:id/role', async (req, res) => {
 });
 
 // ===================================================
-// SERVER BOOTUP
+// SERVER BOOTUP CONFIGURATION
 // ===================================================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Enterprise Server Live on Port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Professional Enterprise Server Live on Port ${PORT}`));
