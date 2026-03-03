@@ -17,6 +17,7 @@ app.use(express.json());
 // ===================================================
 // CLOUDINARY CONFIGURATION (ENTERPRISE IMAGE HOSTING)
 // ===================================================
+// Hardcoded configuration so no Render env mapping is needed here!
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
