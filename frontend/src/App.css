@@ -1,28 +1,42 @@
 /* ============================================================================
-   INV-PRO BUSINESS SUITE - PREMIUM ENTERPRISE CSS v4.0
+   INV-PRO ENTERPRISE BUSINESS SUITE - CSS ARCHITECTURE v4.0
    ============================================================================
-   AUTHOR: Gemini AI (Enterprise Architect)
-   COMPATIBILITY: App.jsx v4.0 (Logic-Synced)
-   DESIGN: High-Fidelity Industrial SaaS
+   DESIGN SYSTEM: High-Fidelity Enterprise SaaS
+   COMPATIBILITY: App.jsx v4.0 (2000 Lines Logic Sync)
+   FEATURES: Glassmorphism, Fluid Layouts, Role-based Themes, BI Visualization
    ============================================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
-/* --- 1. GLOBAL DESIGN SYSTEM TOKENS --- */
+/* ----------------------------------------------------------------------------
+   1. MASTER VARIABLES (The Financial Palette)
+   ---------------------------------------------------------------------------- */
 :root {
-    /* Main Brand Palette - Professional Indigo */
+    /* Brand Core - Professional Indigo */
     --p-50: #eef2ff;
     --p-100: #e0e7ff;
     --p-200: #c7d2fe;
     --p-300: #a5b4fc;
     --p-400: #818cf8;
-    --p-500: #6366f1;
-    --p-600: #4f46e5; /* Core Primary */
+    --p-500: #6366f1; /* Main */
+    --p-600: #4f46e5;
     --p-700: #4338ca;
     --p-800: #3730a3;
     --p-900: #1e1b4b;
 
-    /* Neutrals - High Precision Slate */
+    /* Semantic Logic - Success, Warning, Error */
+    --success: #10b981;
+    --success-deep: #059669;
+    --success-soft: rgba(16, 185, 129, 0.1);
+    
+    --danger: #ef4444;
+    --danger-deep: #dc2626;
+    --danger-soft: rgba(239, 68, 68, 0.1);
+    
+    --warning: #f59e0b;
+    --warning-soft: rgba(245, 158, 11, 0.1);
+
+    /* Neutral Scale (The Slate System) */
     --s-50: #f8fafc;
     --s-100: #f1f5f9;
     --s-200: #e2e8f0;
@@ -34,30 +48,25 @@
     --s-800: #1e293b;
     --s-900: #0f172a; /* Deep UI Surface */
 
-    /* Semantic Feedback States */
-    --success: #10b981;
-    --success-bg: #ecfdf5;
-    --danger: #ef4444;
-    --danger-bg: #fef2f2;
-    --warning: #f59e0b;
-    --warning-bg: #fffbeb;
-    --info: #3b82f6;
-
-    /* Layout Geometry */
+    /* Premium Constants */
+    --glass: rgba(255, 255, 255, 0.85);
     --sidebar-w: 280px;
+    --header-h: 90px;
     --radius-sm: 8px;
     --radius-md: 14px;
-    --radius-lg: 24px;
-    --radius-xl: 40px;
-    
-    /* Premium Shadows & Elevation */
-    --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+    --radius-lg: 20px;
+    --radius-xl: 30px;
+
+    /* Elevation Logic */
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-md: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.03);
+    --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    --shadow-premium: 0 0 50px rgba(79, 70, 229, 0.15);
 }
 
-/* --- 2. BASE RESET & ACCESSIBILITY --- */
+/* ----------------------------------------------------------------------------
+   2. GLOBAL BOOTSTRAP & RESET
+   ---------------------------------------------------------------------------- */
 * {
     margin: 0;
     padding: 0;
@@ -66,95 +75,121 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
-html, body {
+body {
     font-family: 'Inter', sans-serif;
     background-color: var(--s-50);
     color: var(--s-900);
     overflow-x: hidden;
-    scroll-behavior: smooth;
 }
 
-/* Premium Custom Scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--s-50); }
-::-webkit-scrollbar-thumb { 
-    background: var(--s-300); 
-    border-radius: 10px; 
-    border: 2px solid var(--s-50); 
+/* Sleek Webkit Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--p-400); }
 
-/* --- 3. FIXING LOGIN VISIBILITY (THE AUTH SUITE) --- */
+::-webkit-scrollbar-track {
+    background: var(--s-100);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--s-300);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--p-400);
+}
+
+/* ----------------------------------------------------------------------------
+   3. ENTERPRISE AUTHENTICATION VIEWPORT (Fixing Login Visibility)
+   ---------------------------------------------------------------------------- */
 .ent-auth-viewport {
     display: flex;
     height: 100vh;
     width: 100vw;
-    background: #ffffff;
-    overflow: hidden;
+    background-color: white;
 }
 
-/* Auth Branding Panel (Left) */
+/* Left Side Branding */
 .ent-auth-branding {
-    flex: 1.4;
+    flex: 1.3;
     background: linear-gradient(145deg, var(--s-900) 0%, #1e1b4b 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 80px;
     position: relative;
-    color: white;
+    overflow: hidden;
+}
+
+.ent-auth-branding::before {
+    content: '';
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(79, 70, 229, 0.12) 0%, transparent 70%);
+    top: -200px;
+    left: -200px;
+    border-radius: 50%;
 }
 
 .branding-container {
     z-index: 10;
-    max-width: 620px;
+    max-width: 600px;
     animation: slideUpFade 0.8s ease-out;
 }
 
 .ent-badge {
-    display: inline-block;
-    background: rgba(255,255,255,0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
-    padding: 8px 18px;
+    background: var(--primary-soft);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--p-300);
+    padding: 8px 16px;
     border-radius: 50px;
     font-size: 0.75rem;
     font-weight: 800;
     letter-spacing: 2px;
+    display: inline-block;
     margin-bottom: 30px;
 }
 
 .ent-main-title {
-    font-size: 5.2rem;
+    font-size: 4.8rem;
     font-weight: 900;
-    line-height: 0.9;
+    color: white;
+    line-height: 0.95;
     letter-spacing: -3px;
     margin-bottom: 25px;
 }
 
 .ent-main-title span {
     background: linear-gradient(to right, #818cf8, #c7d2fe);
-    background-clip: text;
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
-    color: transparent;
 }
 
-/* Auth Form Side (Right) */
+.ent-sub-title {
+    font-size: 1.2rem;
+    color: var(--s-400);
+    line-height: 1.7;
+    margin-bottom: 50px;
+}
+
+/* Right Side Login Form */
 .ent-auth-form-side {
     flex: 1;
-    background-color: var(--s-50);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 40px;
+    background: var(--s-50);
 }
 
 .ent-login-card {
     width: 100%;
     max-width: 480px;
     background: white;
-    padding: 55px;
+    padding: 50px;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--s-200);
@@ -170,35 +205,52 @@ html, body {
 
 .ent-portal-tabs button {
     flex: 1;
-    padding: 14px;
+    padding: 12px;
     border: none;
     background: transparent;
     color: var(--s-500);
     font-weight: 700;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     cursor: pointer;
     border-radius: 8px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: 0.3s;
 }
 
 .ent-portal-tabs button.active {
     background: white;
     color: var(--p-600);
-    box-shadow: var(--shadow-soft);
+    box-shadow: var(--shadow-sm);
 }
 
-/* --- THE CRITICAL INPUT FIX --- */
+/* --- FIXING INPUT VISIBILITY --- */
+.ent-card-head {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.ent-icon-circle {
+    width: 64px;
+    height: 64px;
+    background: var(--p-50);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 20px;
+    color: var(--p-600);
+    font-size: 1.5rem;
+}
+
 .ent-master-form .ent-input-group {
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 .ent-master-form label {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 800;
-    color: var(--s-500); /* Fixed visibility */
-    margin-bottom: 10px;
-    letter-spacing: 0.5px;
+    color: var(--s-500);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
 }
 
 .ent-input-wrapper {
@@ -209,41 +261,41 @@ html, body {
 
 .ent-input-wrapper i {
     position: absolute;
-    left: 20px;
+    left: 18px;
     color: var(--s-400);
     font-size: 1.1rem;
 }
 
 .ent-input-wrapper input {
     width: 100%;
-    height: 58px;
-    background-color: var(--s-50);
+    height: 56px;
+    background: var(--s-50);
     border: 2px solid var(--s-100);
-    border-radius: 14px;
-    padding: 0 20px 0 55px; /* Added left padding for icon */
+    border-radius: 12px;
+    padding: 0 20px 0 50px; /* Crucial padding */
     font-size: 1rem;
     font-weight: 600;
-    color: var(--s-900) !important; /* Force visible text color */
-    transition: all 0.3s;
+    color: var(--s-900); /* Dark text color */
+    transition: 0.3s;
 }
 
 .ent-input-wrapper input:focus {
     outline: none;
     border-color: var(--p-500);
-    background-color: white;
-    box-shadow: 0 0 0 5px var(--p-50);
+    background: white;
+    box-shadow: 0 0 0 4px var(--p-50);
 }
 
 .ent-btn-auth {
     width: 100%;
-    height: 60px;
+    height: 58px;
     border: none;
-    border-radius: 14px;
+    border-radius: 12px;
     color: white;
-    font-weight: 900;
-    font-size: 1.1rem;
+    font-weight: 800;
+    font-size: 1rem;
     cursor: pointer;
-    transition: 0.4s;
+    transition: 0.3s;
     margin-top: 15px;
     display: flex;
     align-items: center;
@@ -251,16 +303,19 @@ html, body {
     gap: 12px;
 }
 
-.ent-btn-auth.admin { background: var(--p-600); }
-.ent-btn-auth.manager { background: var(--success); }
-.ent-btn-auth.staff { background: var(--warning); }
+.ent-btn-auth.admin { background: var(--p-600); box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3); }
+.ent-btn-auth.manager { background: var(--success); box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3); }
+.ent-btn-auth.staff { background: var(--warning); box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3); }
 
-/* --- 4. ENTERPRISE APP LAYOUT ARCHITECTURE --- */
+/* ----------------------------------------------------------------------------
+   4. CORE APP LAYOUT (SIDEBAR & MAIN)
+   ---------------------------------------------------------------------------- */
 .ent-app-layout {
     display: flex;
     min-height: 100vh;
 }
 
+/* Master Sidebar */
 .ent-sidebar {
     width: var(--sidebar-w);
     background: var(--s-900);
@@ -268,125 +323,235 @@ html, body {
     position: fixed;
     left: 0;
     top: 0;
-    padding: 45px 25px;
+    padding: 40px 24px;
     display: flex;
     flex-direction: column;
     z-index: 1000;
-    transition: 0.4s ease;
 }
 
 .ent-logo-section {
     display: flex;
     align-items: center;
-    gap: 18px;
-    margin-bottom: 65px;
+    gap: 15px;
+    margin-bottom: 60px;
     padding-left: 10px;
 }
 
 .ent-logo-icon {
-    width: 45px;
-    height: 45px;
-    background: linear-gradient(135deg, var(--p-500), var(--p-700));
-    border-radius: 14px;
+    width: 42px;
+    height: 42px;
+    background: var(--p-500);
+    border-radius: 12px;
     display: grid;
     place-items: center;
     color: white;
-    font-size: 1.3rem;
-    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+    font-size: 1.2rem;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
 }
 
 .ent-logo-text {
     color: white;
     font-weight: 900;
-    font-size: 1.6rem;
-    letter-spacing: -1.5px;
+    font-size: 1.4rem;
+    letter-spacing: -1px;
+}
+
+.ent-logo-text span { color: var(--p-400); }
+
+.ent-nav-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--s-600);
+    margin-bottom: 15px;
+    padding-left: 15px;
+    font-weight: 800;
 }
 
 .ent-nav-item {
     display: flex;
     align-items: center;
-    gap: 18px;
-    padding: 16px 22px;
-    border-radius: 14px;
+    gap: 15px;
+    padding: 14px 18px;
+    border-radius: 12px;
     color: var(--s-400);
     font-weight: 600;
     cursor: pointer;
-    margin-bottom: 12px;
-    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 8px;
+    transition: 0.3s;
 }
 
 .ent-nav-item:hover {
     color: white;
-    background: rgba(255,255,255,0.08);
-    transform: translateX(5px);
+    background: rgba(255,255,255,0.05);
 }
 
 .ent-nav-item.active {
     background: linear-gradient(to right, var(--p-600), var(--p-800));
     color: white;
-    box-shadow: 0 12px 24px rgba(0,0,0,0.25);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
 }
 
+.ent-sidebar-footer {
+    margin-top: auto;
+    padding: 15px;
+    border-top: 1px solid var(--s-800);
+    color: var(--danger);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+/* Main Content Area */
 .ent-main-content {
     flex: 1;
     margin-left: var(--sidebar-w);
-    padding: 50px 65px;
+    padding: 40px 60px;
+    min-height: 100vh;
 }
 
-/* --- 5. DATA SCOREBOARD (KPI) --- */
+/* ----------------------------------------------------------------------------
+   5. PREMIUM HEADER & KPI CARDS
+   ---------------------------------------------------------------------------- */
+.ent-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 50px;
+}
+
+.header-info h1 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+    color: var(--s-900);
+}
+
+.header-info p {
+    color: var(--s-500);
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.header-profile {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: white;
+    padding: 10px 10px 10px 25px;
+    border-radius: 50px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--s-200);
+}
+
+.profile-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: var(--p-600);
+    color: white;
+    display: grid;
+    place-items: center;
+    font-weight: 900;
+    font-size: 1.3rem;
+}
+
+/* KPI Scoreboard */
 .ent-kpi-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 35px;
-    margin-bottom: 55px;
+    gap: 30px;
+    margin-bottom: 50px;
 }
 
 .ent-kpi-card {
     background: white;
-    padding: 40px;
-    border-radius: 28px;
+    padding: 35px;
+    border-radius: 24px;
     box-shadow: var(--shadow-md);
     display: flex;
     align-items: center;
-    gap: 30px;
+    gap: 25px;
     border: 1px solid white;
-    position: relative;
-    overflow: hidden;
+    transition: 0.4s;
 }
 
-.ent-kpi-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 6px;
-    background: var(--p-500);
+.ent-kpi-card:hover {
+    transform: translateY(-10px);
+    box-shadow: var(--shadow-lg);
 }
-
-.ent-kpi-card.success::before { background: var(--success); }
-.ent-kpi-card.warning::before { background: var(--warning); }
 
 .kpi-icon {
-    width: 72px; height: 72px;
-    border-radius: 22px;
-    background: var(--s-50);
+    width: 65px;
+    height: 65px;
+    border-radius: 18px;
+    background: var(--p-50);
     color: var(--p-600);
-    display: grid; place-items: center;
-    font-size: 1.8rem;
+    display: grid;
+    place-items: center;
+    font-size: 1.6rem;
 }
+
+.ent-kpi-card.success .kpi-icon { background: var(--success-soft); color: var(--success); }
+.ent-kpi-card.warning .kpi-icon { background: var(--warning-soft); color: var(--warning); }
 
 .kpi-data h3 {
-    font-size: 2.2rem;
+    font-size: 2rem;
     font-weight: 900;
-    color: var(--s-900);
+    line-height: 1;
 }
 
-/* --- 6. ADVANCED DATA TABLES --- */
+.kpi-data p {
+    color: var(--s-500);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-top: 8px;
+}
+
+/* ----------------------------------------------------------------------------
+   6. ENTERPRISE DATA TABLES
+   ---------------------------------------------------------------------------- */
 .ent-table-panel {
     background: white;
-    border-radius: 28px;
-    box-shadow: var(--shadow-lg);
+    border-radius: 24px;
+    box-shadow: var(--shadow-md);
     border: 1px solid var(--s-200);
     overflow: hidden;
+}
+
+.panel-header {
+    padding: 25px 35px;
+    background: var(--s-50);
+    border-bottom: 1px solid var(--s-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-search {
+    position: relative;
+    width: 400px;
+}
+
+.panel-search i {
+    position: absolute;
+    left: 18px;
+    top: 18px;
+    color: var(--s-400);
+}
+
+.panel-search input {
+    width: 100%;
+    height: 52px;
+    background: white;
+    border: 1.5px solid var(--s-200);
+    border-radius: 12px;
+    padding: 0 50px;
+    font-weight: 600;
 }
 
 .ent-master-table {
@@ -396,202 +561,221 @@ html, body {
 
 .ent-master-table th {
     background: var(--s-50);
-    padding: 24px 30px;
+    padding: 20px 25px;
     text-align: left;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 900;
     color: var(--s-500);
     text-transform: uppercase;
-    letter-spacing: 1.8px;
-    border-bottom: 2px solid var(--s-100);
+    letter-spacing: 1.5px;
 }
 
 .ent-master-table td {
-    padding: 26px 30px;
+    padding: 24px 25px;
     border-bottom: 1px solid var(--s-100);
-    font-weight: 600;
-    color: var(--s-700);
-    font-size: 0.95rem;
+    font-weight: 500;
 }
 
 .entity-cell {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 15px;
 }
 
 .entity-cell img {
-    width: 50px; height: 50px;
-    border-radius: 15px;
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
     object-fit: cover;
-    box-shadow: var(--shadow-soft);
-    border: 2px solid white;
+    box-shadow: var(--shadow-sm);
 }
 
-.entity-name { font-weight: 800; color: var(--s-900); }
+.entity-name {
+    font-weight: 800;
+    color: var(--s-900);
+}
 
-/* --- 7. SMART POS INTERFACE --- */
+/* ----------------------------------------------------------------------------
+   7. SMART POS TERMINAL COMPONENTS
+   ---------------------------------------------------------------------------- */
 .ent-pos-viewport {
     display: flex;
-    gap: 35px;
-    height: calc(100vh - 190px);
+    gap: 30px;
+    height: calc(100vh - 180px);
 }
 
 .pos-scanner-box {
     background: white;
-    padding: 25px 35px;
-    border-radius: 24px;
-    border: 3px solid var(--p-500);
+    padding: 20px 30px;
+    border-radius: 20px;
+    border: 2px solid var(--p-500);
     display: flex;
     align-items: center;
-    gap: 25px;
-    margin-bottom: 35px;
-    box-shadow: 0 15px 30px rgba(99, 102, 241, 0.15);
+    gap: 20px;
+    margin-bottom: 30px;
 }
+
+.pos-scanner-box i { font-size: 1.8rem; color: var(--p-600); }
 
 .pos-items-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 30px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 25px;
     overflow-y: auto;
     padding-right: 15px;
 }
 
 .pos-sku-card {
     background: white;
-    padding: 30px;
-    border-radius: 24px;
+    padding: 25px;
+    border-radius: 20px;
     text-align: center;
     cursor: pointer;
-    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border: 1.5px solid var(--s-100);
+    transition: 0.3s;
+    border: 1px solid var(--s-200);
 }
 
 .pos-sku-card:hover {
-    transform: translateY(-12px);
+    transform: translateY(-10px);
     border-color: var(--p-500);
     box-shadow: var(--shadow-lg);
 }
 
 .sku-image-box {
-    width: 120px; height: 120px;
+    width: 100px;
+    height: 100px;
     margin: 0 auto 20px;
     background: var(--s-50);
-    border-radius: 20px;
-    display: grid; place-items: center;
-    overflow: hidden;
+    border-radius: 15px;
+    display: grid;
+    place-items: center;
 }
 
-.sku-image-box img { width: 100%; height: 100%; object-fit: cover; }
+.sku-image-box img { width: 100%; height: 100%; border-radius: 15px; object-fit: cover; }
 
 .ent-pos-cart {
-    width: 480px;
+    width: 450px;
     background: white;
-    border-radius: 30px;
+    border-radius: 24px;
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--s-200);
 }
 
-.cart-summary-section {
-    padding: 35px;
-    background: var(--s-50);
-    border-top: 2px dashed var(--s-300);
+/* ----------------------------------------------------------------------------
+   8. BUSINESS INTELLIGENCE (BI) MODULE
+   ---------------------------------------------------------------------------- */
+.ent-bi-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
 }
 
-.summary-row.grand {
-    font-size: 2rem;
-    font-weight: 900;
-    color: var(--s-900);
-    margin: 15px 0;
-}
-
-.btn-finalize {
-    width: 100%;
-    height: 70px;
-    background: var(--p-600);
-    color: white;
-    border: none;
-    border-radius: 18px;
-    font-weight: 900;
-    font-size: 1.2rem;
-    cursor: pointer;
-    box-shadow: 0 12px 24px rgba(79, 70, 229, 0.3);
-}
-
-/* --- 8. BUSINESS ANALYTICS (BI HUB) --- */
 .bi-stats-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 35px;
-    margin-bottom: 40px;
+    gap: 30px;
 }
 
 .bi-card {
     background: white;
-    padding: 35px;
-    border-radius: 24px;
+    padding: 30px;
+    border-radius: 20px;
     box-shadow: var(--shadow-md);
-    border-left: 8px solid var(--p-600);
+    border-left: 6px solid var(--p-600);
 }
 
-.bi-card .value { 
-    font-size: 2.8rem; 
-    font-weight: 900; 
-    color: var(--s-900); 
-    margin: 15px 0; 
-}
+.bi-card .value { font-size: 2.4rem; font-weight: 900; margin: 10px 0; }
+.bi-card .trend { font-size: 0.8rem; font-weight: 800; color: var(--success); }
+.bi-card .trend.danger { color: var(--danger); }
 
 .bi-charts-row {
     display: grid;
     grid-template-columns: 1.6fr 1fr;
-    gap: 35px;
-    margin-bottom: 40px;
+    gap: 30px;
 }
 
 .bi-chart-panel {
     background: white;
-    padding: 35px;
-    border-radius: 30px;
+    padding: 30px;
+    border-radius: 24px;
     box-shadow: var(--shadow-md);
-    height: 550px;
+    height: 500px;
 }
 
-/* --- 9. STATUS & ACCESS CONTROL UI --- */
+.panel-head {
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--s-800);
+    margin-bottom: 30px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.chart-container { height: 380px; }
+
+/* ----------------------------------------------------------------------------
+   9. CUSTOM UI ELEMENTS (BADGES, BUTTONS)
+   ---------------------------------------------------------------------------- */
 .ent-tag {
     background: var(--s-100);
-    padding: 6px 14px;
-    border-radius: 10px;
-    font-size: 0.8rem;
-    font-weight: 800;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
     color: var(--s-600);
 }
 
 .ent-badge {
-    padding: 8px 18px;
+    padding: 6px 14px;
     border-radius: 50px;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 900;
-    letter-spacing: 0.5px;
 }
 
-.ent-badge.success { background: var(--success-bg); color: var(--success); }
-.ent-badge.danger { background: var(--danger-bg); color: var(--danger); }
+.ent-badge.success { background: var(--success-soft); color: var(--success); }
+.ent-badge.danger { background: var(--danger-soft); color: var(--danger); }
 
-.role-badge {
-    padding: 8px 16px;
+.btn-commit {
+    width: 100%;
+    height: 54px;
+    background: var(--p-600);
+    color: white;
+    border: none;
     border-radius: 12px;
-    font-size: 0.75rem;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 8px 15px rgba(79, 70, 229, 0.2);
+}
+
+/* ----------------------------------------------------------------------------
+   10. ROLE-BASED ACCESS UI (RBAC)
+   ---------------------------------------------------------------------------- */
+.role-badge {
+    padding: 6px 14px;
+    border-radius: 10px;
+    font-size: 0.7rem;
     font-weight: 800;
 }
 
 .role-badge.admin { background: #fef2f2; color: #dc2626; }
 .role-badge.manager { background: #eff6ff; color: #2563eb; }
+.role-badge.staff { background: #f8fafc; color: #475569; }
 
-/* --- 10. ANIMATIONS (The Professional Touch) --- */
+.ent-select {
+    height: 45px;
+    border-radius: 10px;
+    border: 1.5px solid var(--s-200);
+    padding: 0 15px;
+    font-weight: 700;
+}
+
+/* ----------------------------------------------------------------------------
+   11. ANIMATIONS (Fluid Motion)
+   ---------------------------------------------------------------------------- */
 @keyframes slideUpFade {
-    from { opacity: 0; transform: translateY(50px); }
+    from { opacity: 0; transform: translateY(40px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
@@ -599,30 +783,31 @@ html, body {
     animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* --- 11. RESPONSIVE BREAKPOINTS --- */
-@media (max-width: 1400px) {
+/* ----------------------------------------------------------------------------
+   12. RESPONSIVE MEDIA BREAKPOINTS
+   ---------------------------------------------------------------------------- */
+@media (max-width: 1600px) {
     :root {
         --sidebar-w: 250px;
     }
-    .ent-main-content { padding: 35px 45px; }
 }
 
 @media (max-width: 1200px) {
-    .bi-charts-row, .ent-kpi-row { grid-template-columns: 1fr; }
+    .ent-kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .bi-charts-row { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
     .ent-auth-branding { display: none; }
-    .ent-sidebar { width: 85px; padding: 30px 10px; }
+    .ent-sidebar { width: 80px; }
     .ent-sidebar span, .ent-nav-label { display: none; }
-    .ent-main-content { margin-left: 85px; padding: 25px; }
-    .ent-logo-text { display: none; }
+    .ent-main-content { margin-left: 80px; padding: 20px; }
 }
 
-/* Printing logic for Fiscal Compliance */
+/* Printing logic for jsPDF alignment */
 @media print {
-    .ent-sidebar, .ent-page-header, .btn-refresh { display: none !important; }
+    .ent-sidebar, .ent-page-header, .panel-actions { display: none !important; }
     .ent-main-content { margin: 0; padding: 0; }
 }
 
-/* --- END OF ENTERPRISE SUITE v4.0 CSS --- */
+/* --- THE END OF ARCHITECTURE --- */
