@@ -18,6 +18,9 @@ app.use(express.json());
 // CLOUDINARY CONFIGURATION (ENTERPRISE IMAGE HOSTING)
 // ===================================================
 // Hardcoded configuration so no Render env mapping is needed here!
+// Debugging ke liye (Sirf check karne ke liye ki keys mil rahi hain ya nahi)
+console.log("Cloud Name Check:", process.env.CLOUDINARY_CLOUD_NAME ? "Mila ✅" : "Nahi Mila ❌");
+console.log("API Key Check:", process.env.CLOUDINARY_API_KEY ? "Mili ✅" : "Nahi Mili ❌");
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
