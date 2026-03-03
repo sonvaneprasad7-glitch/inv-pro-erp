@@ -299,7 +299,7 @@ function App() {
     doc.text(`Grand Total: Rs. ${totalAmount}`, 140, finalY + 15);
 
     doc.setFontSize(10);
-    doc.setTextColor(148, 163, 184);
+    doc.setTextColor(148, 184, 184);
     doc.text("Thank you for your business! Visit Again.", 105, finalY + 35, { align: "center" });
 
     doc.save(`Master_Invoice_INV-${invoiceNo}.pdf`);
@@ -599,8 +599,13 @@ function App() {
                   {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
                     <tr key={p.id}>
                       <td style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                        {/* 🔥 SMART IMAGE LOGIC FOR DASHBOARD 🔥 */}
                         {p.image_url ? (
-                          <img src={`https://inv-pro-erp.onrender.com${p.image_url}`} style={{width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover'}} alt="img" />
+                          <img 
+                            src={p.image_url.startsWith('http') ? p.image_url : `https://inv-pro-erp.onrender.com${p.image_url}`} 
+                            style={{width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover'}} 
+                            alt="img" 
+                          />
                         ) : (
                           <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}><i className="fas fa-image" style={{fontSize: '0.8rem'}}></i></div>
                         )}
@@ -667,8 +672,13 @@ function App() {
                     onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 10px 15px rgba(0,0,0,0.1)'}
                     onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.02)'}
                   >
+                    {/* 🔥 SMART IMAGE LOGIC FOR POS GRID 🔥 */}
                     {p.image_url ? (
-                      <img src={`https://inv-pro-erp.onrender.com${p.image_url}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} alt={p.name} />
+                      <img 
+                        src={p.image_url.startsWith('http') ? p.image_url : `https://inv-pro-erp.onrender.com${p.image_url}`} 
+                        style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} 
+                        alt={p.name} 
+                      />
                     ) : (
                       <div style={{ width: '80px', height: '80px', background: '#f1f5f9', borderRadius: '8px', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
                         <i className="fas fa-box" style={{ fontSize: '24px' }}></i>
