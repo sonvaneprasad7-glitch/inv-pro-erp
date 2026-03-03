@@ -1,575 +1,478 @@
-/**
- * ============================================================================
- * INV-PRO ENTERPRISE BUSINESS SUITE - v4.0 (PREMIUM EDITION)
- * ============================================================================
- * DESCRIPTION: 
- * A high-fidelity, industrial-grade ERP system designed for modern 
- * retail environments. This suite integrates real-time inventory management,
- * high-speed POS terminal logic, role-based security protocols, and 
- * deep-learning business intelligence analytics.
- * * CORE FEATURES:
- * 1. RBAC (Role Based Access Control): Admin, Manager, Staff.
- * 2. BI ENGINE: Automated revenue forecasting and category performance.
- * 3. POS HUB: Barcode-first transactional interface with bulk sync.
- * 4. AUDIT LEDGER: Immutable passbook tracking for every stock delta.
- * 5. CLOUDINARY SYNC: Enterprise image hosting logic with smart routing.
- * ============================================================================
- */
-
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import './App.css';
-
-// ENTERPRISE VISUALIZATION ENGINE (CHART.JS 4+)
-import { 
-  Chart as ChartJS, 
-  CategoryScale, 
-  LinearScale, 
-  BarElement, 
-  PointElement, 
-  LineElement, 
-  ArcElement, 
-  Title, 
-  Tooltip, 
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  ArcElement,
+  Title,
+  Tooltip,
   Legend,
   Filler
 } from 'chart.js';
-import { Bar, Doughnut, Line, Pie } from 'react-chartjs-2';
-
-// DOCUMENT GENERATION ENGINE
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import './App.css'; // Hamein iska naya code next step mein likhna hai
 
-// REGISTRATION OF CHART PLUGINS
+// ===================================================
+// 1. ENTERPRISE CHART CONFIGURATION
+// ===================================================
 ChartJS.register(
-  CategoryScale, 
-  LinearScale, 
-  BarElement, 
-  PointElement, 
-  LineElement, 
-  ArcElement, 
-  Title, 
-  Tooltip, 
-  Legend,
-  Filler
+  CategoryScale, LinearScale, BarElement, PointElement,
+  LineElement, ArcElement, Title, Tooltip, Legend, Filler
 );
 
+// ===================================================
+// 2. REUSABLE ENTERPRISE COMPONENTS (INLINE)
+// ===================================================
+
+// Toast Notification System
+const Toast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColors = {
+    success: '#10b981',
+    error: '#ef4444',
+    warning: '#f59e0b',
+    info: '#3b82f6'
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: '20px', right: '20px', backgroundColor: bgColors[type],
+      color: '#fff', padding: '15px 25px', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+      zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 600, animation: 'slideIn 0.3s ease-out'
+    }}>
+      <i className={`fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}`}></i>
+      {message}
+    </div>
+  );
+};
+
+// Modal System for Forms
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)',
+      backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center'
+    }}>
+      <div style={{
+        backgroundColor: '#fff', width: '100%', maxWidth: '600px', borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh'
+      }}>
+        <div style={{ padding: '20px 25px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+          <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 800 }}>{title}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+        </div>
+        <div style={{ padding: '25px', overflowY: 'auto' }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===================================================
+// 3. MAIN APPLICATION COMPONENT
+// ===================================================
 function App() {
-  // ==========================================================================
-  // [SECTION 1: MASTER STATE ARCHITECTURE]
-  // ==========================================================================
+  const API_BASE = 'https://inv-pro-erp.onrender.com/api';
 
-  // --- CORE DATABASE STATES ---
-  const [products, setProducts] = useState([]);      // Catalog Data
-  const [sales, setSales] = useState([]);            // Global Transaction History
-  const [usersList, setUsersList] = useState([]);    // Identity Management Data
-  const [ledgerData, setLedgerData] = useState([]);  // Audit Passbook Data
-
-  // --- BUSINESS INTELLIGENCE (BI) DATA BUCKETS ---
-  const [analyticsData, setAnalyticsData] = useState({
-    topProducts: [],      // Top 5 High-Demand SKUs
-    categorySales: [],    // Categorical Revenue Mix
-    salesTrend: [],       // 7-Day Revenue Progression
-    lowStockAlerts: [],   // Inventory Threshold Triggers
-    dailyProfit: 0,       // Daily Yield Calculation
-    totalRevenue: 0       // Lifetime Revenue Accumulation
-  });
-
-  // --- UI NAVIGATION & ROUTING ---
-  const [activeTab, setActiveTab] = useState('dashboard'); 
-  const [editingId, setEditingId] = useState(null);
+  // --- STATE MANAGEMENT ---
+  const [appState, setAppState] = useState({ isLoading: true, isSidebarOpen: true });
+  const [toasts, setToasts] = useState([]);
+  
+  // Data States
+  const [products, setProducts] = useState([]);
+  const [sales, setSales] = useState([]);
+  const [usersList, setUsersList] = useState([]);
+  const [ledgerData, setLedgerData] = useState([]);
+  const [analyticsData, setAnalyticsData] = useState({ topProducts: [], categorySales: [], salesTrend: [] });
+  
+  // UI & Interaction States
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeSubModule, setActiveSubModule] = useState('overview');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [posCategory, setPosCategory] = useState('All');
+  
+  // Form State
+  const [formData, setFormData] = useState({ name: '', sku: '', category: '', quantity: '', price: '', image: null, image_url: '' });
+  
+  // Auth State
+  const [auth, setAuth] = useState({ isLoggedIn: false, showSignup: false, loginType: 'admin', username: '', password: '', currentUser: '', userRole: '' });
 
-  // --- INVENTORY FORM STATE (ENTERPRISE CRUD) ---
-  const [formData, setFormData] = useState({ 
-    name: '', 
-    sku: '', 
-    category: '', 
-    quantity: '', 
-    price: '', 
-    cost_price: '', // New logic for profit analysis
-    image: null, 
-    image_url: '' 
-  });
-
-  // --- AUTHENTICATION & SECURITY CONTROL ---
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [showSignup, setShowSignup] = useState(false);
-  const [authData, setAuthData] = useState({ username: '', password: '' });
-  const [currentUser, setCurrentUser] = useState('');
-  const [userRole, setUserRole] = useState('staff'); 
-  const [loginType, setLoginType] = useState('admin');
-  const [authError, setAuthError] = useState('');
-
-  // --- SMART POS TERMINAL STATES ---
+  // POS State
   const [cart, setCart] = useState([]);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [posDiscount, setPosDiscount] = useState(0);
 
-  // --- CENTRALIZED API CONFIGURATION ---
-  const API_BASE = 'https://inv-pro-erp.onrender.com/api';
-  const barcodeRef = useRef(null);
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
-  // ==========================================================================
-  // [SECTION 2: DATA SYNCHRONIZATION ENGINE]
-  // ==========================================================================
+  // --- HELPER FUNCTIONS ---
+  const showToast = (message, type = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
 
-  /**
-   * Fetches the entire product catalog with smart image routing logic.
-   */
-  const fetchProducts = async () => {
-    setIsLoading(true);
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  // --- API CALLS ---
+  const fetchInventoryData = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/products`);
       setProducts(res.data);
     } catch (err) {
-      console.error("CRITICAL_ERROR: Product Catalog Sync Failed.", err);
-    } finally {
-      setIsLoading(false);
+      showToast("Inventory Sync Failed", "error");
     }
-  };
+  }, []);
 
-  /**
-   * Syncs sales history for high-level reporting.
-   */
-  const fetchSales = () => {
-    axios.get(`${API_BASE}/sales`)
-      .then(res => setSales(res.data))
-      .catch(err => console.error("CRITICAL_ERROR: Sales History Desync.", err));
-  };
-
-  /**
-   * Retreives the Master User Database (RBAC Management).
-   */
-  const fetchUsersList = () => {
-    axios.get(`${API_BASE}/users`)
-      .then(res => setUsersList(res.data))
-      .catch(err => console.error("CRITICAL_ERROR: Identity Pool Unreachable.", err));
-  };
-
-  /**
-   * Accesses the Stock Ledger (Immutable Audit Logs).
-   */
-  const fetchLedger = () => {
-    axios.get(`${API_BASE}/ledger`)
-      .then(res => setLedgerData(res.data))
-      .catch(err => console.error("CRITICAL_ERROR: Audit Passbook Access Denied.", err));
-  };
-
-  /**
-   * 🔥 DEEP ANALYTICS ENGINE 🔥
-   * Orchestrates multiple API calls to build the Business Intelligence View.
-   */
-  const fetchAnalytics = async () => {
+  const fetchSalesData = useCallback(async () => {
     try {
+      const res = await axios.get(`${API_BASE}/sales`);
+      setSales(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const fetchAdminData = useCallback(async () => {
+    if (auth.userRole !== 'admin' && auth.userRole !== 'manager') return;
+    try {
+      if (auth.userRole === 'admin') {
+        const usersRes = await axios.get(`${API_BASE}/users`);
+        setUsersList(usersRes.data);
+      }
+      const ledgerRes = await axios.get(`${API_BASE}/ledger`);
+      setLedgerData(ledgerRes.data);
+      
       const [top, cat, trend] = await Promise.all([
         axios.get(`${API_BASE}/analytics/top-products`),
         axios.get(`${API_BASE}/analytics/category-sales`),
         axios.get(`${API_BASE}/analytics/sales-trend`)
       ]);
-      
-      const totalRev = trend.data.reduce((acc, curr) => acc + parseFloat(curr.daily_revenue), 0);
-      const lowStock = products.filter(p => p.quantity < 15);
-
-      setAnalyticsData({
-        topProducts: top.data,
-        categorySales: cat.data,
-        salesTrend: trend.data,
-        lowStockAlerts: lowStock,
-        totalRevenue: totalRev,
-        dailyProfit: (totalRev * 0.25) // Simulated 25% profit margin
-      });
+      setAnalyticsData({ topProducts: top.data, categorySales: cat.data, salesTrend: trend.data });
     } catch (err) {
-      console.error("BI_ENGINE_FAILURE: Master Analytics Desync.", err);
+      showToast("Advanced modules sync failed. Checking permissions.", "warning");
     }
-  };
+  }, [auth.userRole]);
 
-  // --- INITIALIZATION HOOKS ---
+  // --- LIFECYCLE ---
+  useEffect(() => {
+    const initApp = async () => {
+      const token = localStorage.getItem('token');
+      const role = localStorage.getItem('role');
+      const savedUser = localStorage.getItem('username');
+      
+      if (token && savedUser) {
+        setAuth(prev => ({ ...prev, isLoggedIn: true, currentUser: savedUser, userRole: role || 'staff' }));
+        await Promise.all([fetchInventoryData(), fetchSalesData()]);
+      }
+      setAppState(prev => ({ ...prev, isLoading: false }));
+    };
+    initApp();
+  }, [fetchInventoryData, fetchSalesData]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role'); 
-    const savedUser = localStorage.getItem('username');
-    
-    if (token) {
-      setIsLoggedIn(true);
-      setCurrentUser(savedUser);
-      setUserRole(role || 'staff');
-      syncSystemData();
-    }
-  }, []);
+    if (auth.isLoggedIn) fetchAdminData();
+  }, [auth.isLoggedIn, activeTab, fetchAdminData]);
 
-  const syncSystemData = () => {
-    fetchProducts();
-    fetchSales(); 
-    if (userRole === 'admin' || userRole === 'manager') {
-        fetchLedger();
-        fetchAnalytics();
-    }
-  };
+  // --- AUTHENTICATION LOGIC ---
+  const handleAuthInput = (e) => setAuth({ ...auth, [e.target.name]: e.target.value });
 
-  useEffect(() => {
-    // Modular Tab Refresh Logic
-    if (activeTab === 'users' && userRole === 'admin') fetchUsersList();
-    if (activeTab === 'ledger' && (userRole === 'admin' || userRole === 'manager')) fetchLedger();
-    if (activeTab === 'analytics' && (userRole === 'admin' || userRole === 'manager')) fetchAnalytics();
-    if (activeTab === 'sales') {
-        fetchProducts();
-        setTimeout(() => barcodeRef.current?.focus(), 500);
-    }
-  }, [activeTab, userRole]);
-
-  // ==========================================================================
-  // [SECTION 3: AUTHENTICATION & SECURITY LAYER]
-  // ==========================================================================
-
-  const handleAuthChange = (e) => {
-    setAuthError('');
-    setAuthData({ ...authData, [e.target.name]: e.target.value });
-  };
-
-  /**
-   * Handles multi-portal login with role validation.
-   */
-  const handleAuthSubmit = (e) => {
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    setAuthError('');
-    setIsLoading(true);
-
-    const endpoint = showSignup ? 'register' : 'login';
-    const payload = showSignup ? { ...authData, role: 'staff' } : authData;
+    setAppState(prev => ({ ...prev, isLoading: true }));
+    const endpoint = auth.showSignup ? 'register' : 'login';
+    const payload = auth.showSignup ? { username: auth.username, password: auth.password, role: 'staff' } : { username: auth.username, password: auth.password };
     
-    axios.post(`${API_BASE}/${endpoint}`, payload)
-      .then(res => {
-        if (!showSignup) {
-          const actualRole = res.data.role || 'staff';
-          
-          // Strict Portal Security Guard
-          if (actualRole !== loginType) {
-            setAuthError(`🛑 Security Alert: Your profile '${actualRole.toUpperCase()}' is restricted from the '${loginType.toUpperCase()}' portal.`);
-            setIsLoading(false);
-            return; 
-          }
-          
-          // Persistent Session Storage
-          localStorage.setItem('token', res.data.token);
-          localStorage.setItem('username', res.data.username);
-          localStorage.setItem('role', actualRole); 
-          
-          setIsLoggedIn(true);
-          setCurrentUser(res.data.username);
-          setUserRole(actualRole);
-          syncSystemData();
-        } else { 
-          alert("✅ Network Access Granted! System account created. Please authenticate via the Staff Portal."); 
-          setShowSignup(false); 
-          setLoginType('staff'); 
+    try {
+      const res = await axios.post(`${API_BASE}/${endpoint}`, payload);
+      if (!auth.showSignup) {
+        const actualRole = res.data.role || 'staff';
+        if (actualRole !== auth.loginType) {
+          showToast(`Profile ${actualRole.toUpperCase()} mismatched with ${auth.loginType.toUpperCase()} portal!`, "error");
+          setAppState(prev => ({ ...prev, isLoading: false }));
+          return;
         }
-      })
-      .catch(err => {
-        setAuthError(`❌ Access Denied: ${err.response?.data?.error || "Credentials invalid or server desync."}`);
-      })
-      .finally(() => setIsLoading(false));
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('username', res.data.username);
+        localStorage.setItem('role', actualRole);
+        
+        setAuth(prev => ({ ...prev, isLoggedIn: true, currentUser: res.data.username, userRole: actualRole, password: '' }));
+        showToast(`Welcome back, ${res.data.username}!`, "success");
+        fetchInventoryData(); fetchSalesData();
+      } else {
+        showToast("Account Created! Please login.", "success");
+        setAuth(prev => ({ ...prev, showSignup: false, loginType: 'staff', password: '' }));
+      }
+    } catch (err) {
+      showToast(err.response?.data?.error || "Authentication Server Offline", "error");
+    } finally {
+      setAppState(prev => ({ ...prev, isLoading: false }));
+    }
   };
 
-  const handleLogout = () => { 
+  const handleLogout = () => {
     if(window.confirm("Terminate secure session?")) {
-        localStorage.clear(); 
-        setIsLoggedIn(false); 
-        window.location.reload(); 
+      localStorage.clear();
+      window.location.reload();
     }
   };
 
-  // ==========================================================================
-  // [SECTION 4: INVENTORY MASTER LOGIC (CRUD)]
-  // ==========================================================================
-
-  const handleInventorySubmit = (e) => {
-    e.preventDefault();
-    if (userRole !== 'admin') return alert("🛑 Authority Denied: Super Admin privileges required.");
-
-    const data = new FormData();
-    data.append('name', formData.name);
-    data.append('sku', formData.sku);
-    data.append('category', formData.category);
-    data.append('quantity', formData.quantity);
-    data.append('price', formData.price);
-
-    // Image Upload Routing
-    if (formData.image instanceof File) {
-      data.append('image', formData.image);
-    } else {
-      data.append('image_url', formData.image_url || '');
-    }
-
-    const config = { headers: { 'Content-Type': 'multipart/form-data' } };
-    const request = editingId 
-      ? axios.put(`${API_BASE}/products/${editingId}`, data, config) 
-      : axios.post(`${API_BASE}/products`, data, config);
-
-    request.then(() => { 
-      fetchProducts(); 
-      if(canExport) fetchLedger();
-      resetForm(); 
-      alert(`✅ Record ${editingId ? 'Modified' : 'Initialized'} Successfully.`);
-    }).catch(err => alert("❌ Transaction Failed: " + err.message));
-  };
-
-  const resetForm = () => {
+  // --- INVENTORY CRUD ---
+  const openAddModal = () => {
     setFormData({ name: '', sku: '', category: '', quantity: '', price: '', image: null, image_url: '' });
     setEditingId(null);
-    if(document.getElementById("imageInput")) document.getElementById("imageInput").value = "";
+    setIsModalOpen(true);
   };
 
-  const handleDeleteProduct = (id) => {
-    if (userRole !== 'admin') return alert("🛑 Authority Denied.");
-    if(window.confirm("⚠️ IMMUTABLE DELETION: Purging this record will affect lifetime sales analytics. Proceed?")) {
-      axios.delete(`${API_BASE}/products/${id}`)
-        .then(() => {
-            fetchProducts();
-            alert("🗑️ SKU purged from global database.");
-        });
-    }
+  const openEditModal = (product) => {
+    setFormData({ ...product, image: null });
+    setEditingId(product.id);
+    setIsModalOpen(true);
   };
 
-  // ==========================================================================
-  // [SECTION 5: SMART TERMINAL POS LOGIC]
-  // ==========================================================================
-
-  /**
-   * Adds an entity to the active session cart.
-   */
-  const addToCart = (product) => {
-    if (product.quantity <= 0) return alert(`❌ Insufficient Inventory: ${product.name} is depleted.`);
-    
-    const existing = cart.find(item => item.id === product.id);
-    if (existing) {
-      if (existing.cartQty >= product.quantity) return alert("⚠️ Inventory Threshold: Cannot exceed stock on hand.");
-      setCart(cart.map(item => item.id === product.id ? { ...item, cartQty: item.cartQty + 1 } : item));
-    } else {
-      setCart([...cart, { ...product, cartQty: 1 }]);
-    }
-  };
-
-  /**
-   * Real-time cart volume adjustments.
-   */
-  const updateCartVolume = (productId, delta) => {
-    const item = cart.find(i => i.id === productId);
-    if (!item) return;
-    const newQty = item.cartQty + delta;
-    if (newQty <= 0) {
-        setCart(cart.filter(i => i.id !== productId));
-    } else if (newQty > item.quantity) {
-        alert("⚠️ System Warning: Stock depletion reached.");
-    } else {
-        setCart(cart.map(i => i.id === productId ? { ...i, cartQty: newQty } : i));
-    }
-  };
-
-  /**
-   * Hardware Barcode Listener Logic.
-   */
-  const handleBarcodeDispatch = (e) => {
+  const handleInventorySubmit = async (e) => {
     e.preventDefault();
-    if (!barcodeInput.trim()) return;
-    const matchedProduct = products.find(p => p.sku.toLowerCase() === barcodeInput.toLowerCase().trim());
-    if (matchedProduct) { 
-      addToCart(matchedProduct); 
-      setBarcodeInput(''); 
-    } else { 
-      alert(`❌ Error 404: SKU '${barcodeInput}' not recognized in node registry.`); 
-      setBarcodeInput(''); 
-    }
-  };
+    if (auth.userRole !== 'admin') return showToast("Admin privileges required.", "error");
 
-  // ==========================================================================
-  // [SECTION 6: ENTERPRISE FISCAL INVOICING]
-  // ==========================================================================
-
-  /**
-   * Generates a high-precision PDF Invoice.
-   */
-  const generateFiscalInvoice = (cartItems, totalAmount) => {
-    const doc = new jsPDF();
-    const invoiceID = `INV-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    
-    // BRANDING & HEADER
-    doc.setFillColor(79, 70, 229);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setFontSize(26); doc.setTextColor(255, 255, 255);
-    doc.text("INV-PRO BUSINESS SUITE", 105, 25, { align: "center" });
-    
-    // METADATA
-    doc.setFontSize(10); doc.setTextColor(15, 23, 42);
-    doc.text(`FISCAL IDENTITY: Walk-in Customer`, 15, 55);
-    doc.text(`INVOICE REFERENCE: ${invoiceID}`, 15, 62);
-    doc.text(`TERMINAL NODE: POS-${currentUser.toUpperCase()}`, 140, 55);
-    doc.text(`SYSTEM TIMESTAMP: ${new Date().toLocaleString()}`, 140, 62);
-
-    const tableData = cartItems.map(item => [
-      item.name, 
-      item.cartQty, 
-      `INR ${item.price.toFixed(2)}`, 
-      `INR ${(item.price * item.cartQty).toFixed(2)}`
-    ]);
-
-    autoTable(doc, {
-      startY: 75,
-      head: [['PRODUCT DESCRIPTION', 'QUANTITY', 'UNIT RATE', 'VALUATION']],
-      body: tableData,
-      headStyles: { fillColor: [79, 70, 229], fontSize: 10, fontStyle: 'bold' },
-      theme: 'grid',
-      styles: { cellPadding: 6, fontSize: 9 }
+    const data = new FormData();
+    Object.keys(formData).forEach(key => {
+      if (key === 'image' && formData[key] instanceof File) data.append(key, formData[key]);
+      else if (key !== 'image') data.append(key, formData[key]);
     });
 
-    const finalY = doc.lastAutoTable.finalY + 20;
-    doc.setDrawColor(226, 232, 240);
-    doc.line(140, finalY - 10, 195, finalY - 10);
-    
-    doc.setFontSize(16); doc.setTextColor(16, 185, 129);
-    doc.text(`GRAND TOTAL: INR ${totalAmount.toLocaleString()}`, 195, finalY, { align: 'right' });
-    
-    doc.setFontSize(9); doc.setTextColor(100, 116, 139);
-    doc.text("Next-Gen Cloud ERP | Fiscal Compliance Enabled", 105, 285, { align: "center" });
-
-    doc.save(`${invoiceID}.pdf`);
-  };
-
-  /**
-   * Finalizes bulk transactions and triggers audit logging.
-   */
-  const finalizeTerminalTransaction = async () => {
-    if (cart.length === 0) return alert("Terminal state: Idle. Scanned data required.");
-    setIsCheckingOut(true);
     try {
-      // Bulk Concurrency Loop
-      await Promise.all(cart.map(item => 
-        axios.post(`${API_BASE}/sales`, { 
-          product_id: item.id, 
-          quantity_sold: item.cartQty 
-        })
-      ));
-      const grandTotal = cart.reduce((sum, item) => sum + (item.price * item.cartQty), 0);
-      generateFiscalInvoice(cart, grandTotal);
-      
-      setCart([]); syncSystemData();
-      alert("✅ CLOUD SYNC SUCCESS: Transaction finalized and ledger updated.");
-    } catch (error) { 
-      alert("❌ CRITICAL SYNC ERROR: Transaction failed to commit to cloud node."); 
-    } finally { 
-      setIsCheckingOut(false); 
+      const config = { headers: { 'Content-Type': 'multipart/form-data' } };
+      if (editingId) {
+        await axios.put(`${API_BASE}/products/${editingId}`, data, config);
+        showToast("Entity updated successfully", "success");
+      } else {
+        await axios.post(`${API_BASE}/products`, data, config);
+        showToast("New entity registered", "success");
+      }
+      fetchInventoryData();
+      fetchAdminData();
+      setIsModalOpen(false);
+    } catch (err) {
+      showToast(err.message, "error");
     }
   };
 
-  // ==========================================================================
-  // [SECTION 7: BUSINESS INTELLIGENCE (BI) RENDERERS]
-  // ==========================================================================
-
-  const renderSalesChart = () => {
-    const data = {
-        labels: analyticsData.salesTrend.map(d => new Date(d.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })),
-        datasets: [{
-            label: 'Daily Revenue (₹)',
-            data: analyticsData.salesTrend.map(d => d.daily_revenue),
-            borderColor: '#4f46e5',
-            backgroundColor: 'rgba(79, 70, 229, 0.1)',
-            fill: true,
-            tension: 0.4,
-            pointRadius: 6,
-            pointHoverRadius: 9,
-            borderWidth: 3
-        }]
-    };
-    return <Line data={data} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} />;
+  const deleteProduct = async (id) => {
+    if (auth.userRole !== 'admin') return showToast("Permission Denied", "error");
+    if(window.confirm("WARNING: Purging this SKU will alter audit logs. Proceed?")) {
+      try {
+        await axios.delete(`${API_BASE}/products/${id}`);
+        showToast("Entity purged from database.", "info");
+        fetchInventoryData();
+      } catch (err) {
+        showToast("Purge failed.", "error");
+      }
+    }
   };
 
-  const renderCategoryMix = () => {
-    const data = {
-        labels: analyticsData.categorySales.map(c => c.category),
-        datasets: [{
-            data: analyticsData.categorySales.map(c => c.revenue),
-            backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
-            hoverOffset: 25,
-            borderWidth: 0
-        }]
-    };
-    return <Doughnut data={data} options={{ maintainAspectRatio: false, cutout: '75%' }} />;
+  // --- POS LOGIC ---
+  const addToCart = (product) => {
+    if (product.quantity <= 0) return showToast(`${product.name} is Out of Stock!`, "warning");
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        if (existing.cartQty >= product.quantity) {
+          showToast(`Max stock reached for ${product.name}`, "warning");
+          return prev;
+        }
+        return prev.map(item => item.id === product.id ? { ...item, cartQty: item.cartQty + 1 } : item);
+      }
+      return [...prev, { ...product, cartQty: 1 }];
+    });
   };
 
-  // ==========================================================================
-  // [SECTION 8: MASTER UI RENDERING ENGINE]
-  // ==========================================================================
+  const updateCartQty = (id, delta) => {
+    setCart(prev => prev.map(item => {
+      if (item.id === id) {
+        const newQty = item.cartQty + delta;
+        if (newQty > item.quantity) { showToast("Stock Limit!", "warning"); return item; }
+        return { ...item, cartQty: newQty };
+      }
+      return item;
+    }).filter(item => item.cartQty > 0));
+  };
 
-  if (!isLoggedIn) {
+  const handleBarcodeScan = (e) => {
+    e.preventDefault();
+    const scanned = barcodeInput.trim().toLowerCase();
+    if (!scanned) return;
+    const found = products.find(p => p.sku.toLowerCase() === scanned);
+    if (found) {
+      addToCart(found);
+      showToast(`Scanned: ${found.name}`, "success");
+    } else {
+      showToast("SKU not recognized", "error");
+    }
+    setBarcodeInput('');
+  };
+
+  const checkout = async () => {
+    if (cart.length === 0) return;
+    setIsCheckingOut(true);
+    try {
+      await Promise.all(cart.map(item => axios.post(`${API_BASE}/sales`, { product_id: item.id, quantity_sold: item.cartQty })));
+      
+      const total = cart.reduce((sum, item) => sum + (item.price * item.cartQty), 0);
+      generatePDFInvoice(cart, total);
+      
+      setCart([]);
+      showToast("Transaction Complete & Invoice Generated", "success");
+      fetchInventoryData(); fetchSalesData(); fetchAdminData();
+    } catch (err) {
+      showToast("Sync Error during checkout", "error");
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
+  const generatePDFInvoice = (items, total) => {
+    const doc = new jsPDF();
+    const invNo = Math.floor(Math.random() * 900000) + 100000;
+    
+    doc.setFontSize(24); doc.setTextColor(79, 70, 229);
+    doc.text("INV-PRO ENTERPRISE", 105, 20, { align: "center" });
+    
+    doc.setFontSize(10); doc.setTextColor(100, 116, 139);
+    doc.text(`Invoice: #INV-${invNo}  |  Cashier: ${auth.currentUser.toUpperCase()}  |  Date: ${new Date().toLocaleString()}`, 105, 30, { align: "center" });
+    doc.line(15, 35, 195, 35);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['SKU', 'Product', 'Qty', 'Unit Rate', 'Total']],
+      body: items.map(i => [i.sku, i.name, i.cartQty, `Rs.${i.price}`, `Rs.${i.price * i.cartQty}`]),
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42] }
+    });
+
+    doc.setFontSize(14); doc.setTextColor(16, 185, 129);
+    doc.text(`GRAND TOTAL: Rs. ${total.toLocaleString()}`, 195, doc.lastAutoTable.finalY + 20, { align: 'right' });
+    doc.save(`Invoice_INV-${invNo}.pdf`);
+  };
+
+  // --- FILTERING & COMPUTATIONS ---
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => 
+      (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (posCategory === 'All' || p.category === posCategory)
+    );
+  }, [products, searchTerm, posCategory]);
+
+  const uniqueCategories = ['All', ...new Set(products.map(p => p.category))];
+  
+  // Pagination logic for Dashboard table
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+
+
+  // ===================================================
+  // RENDER: SPLIT-SCREEN AUTHENTICATION GATEWAY
+  // ===================================================
+  if (appState.isLoading) {
+    return <div style={{ height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0f172a', color: '#fff', fontSize: '2rem' }}><i className="fas fa-circle-notch fa-spin"></i></div>;
+  }
+
+  if (!auth.isLoggedIn) {
     return (
-      <div className="ent-auth-viewport">
-        {/* LEFT: ENTERPRISE BRANDING */}
-        <div className="ent-auth-branding">
-          <div className="branding-container">
-            <div className="ent-badge">ENTERPRISE CLOUD v4.0</div>
-            <h1 className="ent-main-title">INV-PRO <br/><span>Business Suite</span></h1>
-            <p className="ent-sub-title">
-              Industrial-grade ERP architecture built for speed, security, and scalability. 
-              Engineered with real-time POS processing and deep-learning analytics.
-            </p>
-            <div className="ent-features-row">
-              <div className="feat-item"><h3>99.9%</h3><p>Uptime</p></div>
-              <div className="feat-item"><h3>SHA-512</h3><p>Security</p></div>
-              <div className="feat-item"><h3>REAL-TIME</h3><p>Sync</p></div>
-            </div>
+      <div style={{ display: 'flex', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', fontFamily: "'Inter', sans-serif" }}>
+        
+        {/* Left Branding Panel */}
+        <div style={{ flex: 1.2, background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(79,70,229,0.15) 0%, rgba(0,0,0,0) 70%)', top: '-10%', left: '-10%' }}></div>
+          <div style={{ zIndex: 10 }}>
+            <span style={{ display: 'inline-block', padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '30px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '2px', marginBottom: '25px', color: '#818cf8' }}>
+              <i className="fas fa-shield-check"></i> MILITARY-GRADE SECURITY
+            </span>
+            <h1 style={{ fontSize: '5rem', fontWeight: 900, lineHeight: 1, margin: '0 0 20px 0' }}>INV-PRO <br/><span style={{ color: '#4f46e5' }}>Suite 3.0</span></h1>
+            <p style={{ fontSize: '1.2rem', color: '#94a3b8', maxWidth: '500px', lineHeight: 1.6 }}>The world's most advanced Cloud POS and Inventory Management architecture. Login to access your terminal.</p>
           </div>
         </div>
 
-        {/* RIGHT: AUTHENTICATION INTERFACE */}
-        <div className="ent-auth-form-side">
-          <div className="ent-login-card">
-            {!showSignup && (
-              <div className="ent-portal-tabs">
-                {['admin', 'manager', 'staff'].map((p) => (
-                  <button key={p} onClick={() => setLoginType(p)} className={loginType === p ? 'active' : ''}>{p.toUpperCase()}</button>
+        {/* Right Form Panel */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', position: 'relative' }}>
+          {toasts.map(t => <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />)}
+          
+          <div style={{ width: '100%', maxWidth: '480px', padding: '50px', background: '#ffffff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
+            
+            {/* Safe Fallback Header */}
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <h2 style={{ fontSize: '2rem', color: '#0f172a', fontWeight: 800, margin: '0 0 10px 0' }}>{auth.showSignup ? 'Create Account' : 'Portal Access'}</h2>
+              <p style={{ color: '#64748b', margin: 0 }}>Please provide your credentials below.</p>
+            </div>
+
+            {/* Role Selector (Only for Login) */}
+            {!auth.showSignup && (
+              <div style={{ display: 'flex', background: '#f1f5f9', padding: '6px', borderRadius: '12px', marginBottom: '30px' }}>
+                {['admin', 'manager', 'staff'].map(role => (
+                  <button key={role} onClick={() => setAuth({ ...auth, loginType: role })} style={{
+                    flex: 1, padding: '12px 0', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, textTransform: 'capitalize', transition: '0.3s',
+                    background: auth.loginType === role ? '#ffffff' : 'transparent',
+                    color: auth.loginType === role ? '#4f46e5' : '#64748b',
+                    boxShadow: auth.loginType === role ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none'
+                  }}>{role}</button>
                 ))}
               </div>
             )}
-            
-            <div className="ent-card-head">
-              <div className="ent-icon-circle">
-                <i className={`fas ${showSignup ? 'fa-user-plus' : 'fa-lock-shield'}`}></i>
-              </div>
-              <h2>{showSignup ? "System Registration" : `${loginType.toUpperCase()} PORTAL`}</h2>
-              <p>Network identity verification required.</p>
-            </div>
 
-            {authError && <div className="ent-auth-alert">{authError}</div>}
-            
-            <form onSubmit={handleAuthSubmit} className="ent-master-form">
-              <div className="ent-input-group">
-                <label>NETWORK IDENTITY</label>
-                <div className="ent-input-wrapper">
-                  <i className="fas fa-fingerprint"></i>
-                  <input name="username" placeholder="Username / Access ID" onChange={handleAuthChange} required />
+            {/* Strict Form Layout */}
+            <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>Username Identity</label>
+                <div style={{ position: 'relative' }}>
+                  <i className="fas fa-user" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                  {/* BULLETPROOF INLINE STYLES FOR INPUT SO IT ALWAYS SHOWS */}
+                  <input required name="username" value={auth.username} onChange={handleAuthInput} placeholder="Enter your ID" style={{
+                    width: '100%', boxSizing: 'border-box', height: '54px', paddingLeft: '45px', paddingRight: '15px',
+                    backgroundColor: '#f8fafc', color: '#0f172a', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1rem', outline: 'none'
+                  }} onFocus={(e) => e.target.style.borderColor = '#4f46e5'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
                 </div>
               </div>
-              <div className="ent-input-group">
-                <label>SECURITY PASSPHRASE</label>
-                <div className="ent-input-wrapper">
-                  <i className="fas fa-key-skeleton"></i>
-                  <input name="password" type="password" placeholder="••••••••" onChange={handleAuthChange} required />
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>Security Passphrase</label>
+                <div style={{ position: 'relative' }}>
+                  <i className="fas fa-lock" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                  {/* BULLETPROOF INLINE STYLES */}
+                  <input required type="password" name="password" value={auth.password} onChange={handleAuthInput} placeholder="••••••••" style={{
+                    width: '100%', boxSizing: 'border-box', height: '54px', paddingLeft: '45px', paddingRight: '15px',
+                    backgroundColor: '#f8fafc', color: '#0f172a', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1rem', outline: 'none'
+                  }} onFocus={(e) => e.target.style.borderColor = '#4f46e5'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
                 </div>
               </div>
-              
-              <button type="submit" disabled={isLoading} className={`ent-btn-auth ${loginType}`}>
-                {isLoading ? <><i className="fas fa-spinner fa-spin"></i> VERIFYING...</> : <><i className="fas fa-shield-check"></i> INITIATE SESSION</>}
+
+              <button type="submit" disabled={appState.isLoading} style={{
+                width: '100%', height: '54px', backgroundColor: auth.showSignup ? '#0f172a' : (auth.loginType === 'admin' ? '#4f46e5' : auth.loginType === 'manager' ? '#0ea5e9' : '#10b981'),
+                color: '#fff', border: 'none', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 800, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '10px', transition: '0.3s'
+              }}>
+                {appState.isLoading ? <i className="fas fa-spinner fa-spin"></i> : (auth.showSignup ? 'Register New Node' : 'Authenticate Session')}
               </button>
             </form>
-            
-            <div className="ent-auth-footer">
-              <p onClick={() => setShowSignup(!showSignup)}>
-                {showSignup ? "← Back to Secure Gate" : "New User? Request Access Privileges"}
-              </p>
+
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
+              <button onClick={() => setAuth({ ...auth, showSignup: !auth.showSignup })} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem' }}>
+                {auth.showSignup ? 'Already have access? Return to Login' : 'Request network access'} <i className="fas fa-arrow-right"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -577,325 +480,478 @@ function App() {
     );
   }
 
+  // ===================================================
+  // RENDER: ENTERPRISE DASHBOARD & MODULES
+  // ===================================================
+  const isAdmin = auth.userRole === 'admin';
+  const isManager = auth.userRole === 'manager' || auth.userRole === 'admin';
+
   return (
-    <div className="ent-app-layout">
-      {/* GLOBAL ENTERPRISE SIDEBAR */}
-      <div className="ent-sidebar">
-        <div className="ent-logo-section">
-          <div className="ent-logo-icon"><i className="fas fa-cube"></i></div>
-          <div className="ent-logo-text">INV-PRO <span>SUITE</span></div>
-        </div>
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', backgroundColor: '#f1f5f9', fontFamily: "'Inter', sans-serif", color: '#0f172a' }}>
+      
+      {/* GLOBAL TOAST RENDERER */}
+      <div style={{ position: 'fixed', zIndex: 9999 }}>{toasts.map(t => <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />)}</div>
+
+      {/* --- SIDEBAR NAVIGATION (STRICT LAYOUT) --- */}
+      <div style={{ width: appState.isSidebarOpen ? '280px' : '80px', height: '100vh', backgroundColor: '#0f172a', color: '#fff', display: 'flex', flexDirection: 'column', transition: 'width 0.3s ease', flexShrink: 0, zIndex: 100 }}>
         
-        <div className="ent-sidebar-content">
-          <div className="ent-nav-label">Core Operations</div>
-          <div className={`ent-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><i className="fas fa-chart-mixed"></i> <span>Intelligence Hub</span></div>
-          <div className={`ent-nav-item ${activeTab === 'sales' ? 'active' : ''}`} onClick={() => setActiveTab('sales')}><i className="fas fa-cash-register"></i> <span>Smart POS Terminal</span></div>
+        {/* Brand Header */}
+        <div style={{ height: '80px', display: 'flex', alignItems: 'center', padding: '0 25px', borderBottom: '1px solid rgba(255,255,255,0.05)', justifyContent: appState.isSidebarOpen ? 'space-between' : 'center' }}>
+          {appState.isSidebarOpen && <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '10px' }}><i className="fas fa-cube" style={{ color: '#4f46e5' }}></i> INV-PRO</h1>}
+          <button onClick={() => setAppState({...appState, isSidebarOpen: !appState.isSidebarOpen})} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }}><i className="fas fa-bars"></i></button>
+        </div>
+
+        {/* Nav Items */}
+        <div style={{ flex: 1, padding: '20px 15px', display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto' }}>
+          {appState.isSidebarOpen && <div style={{ fontSize: '0.7rem', color: '#475569', fontWeight: 800, textTransform: 'uppercase', paddingLeft: '10px', marginTop: '10px' }}>Primary Modules</div>}
           
-          {canExport && (
-            <div className={`ent-nav-item ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}><i className="fas fa-analytics"></i> <span>Business Analytics</span></div>
+          <button onClick={() => setActiveTab('dashboard')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'dashboard' ? 'rgba(79,70,229,0.15)' : 'transparent', color: activeTab === 'dashboard' ? '#818cf8' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+            <i className="fas fa-table-cells-large" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Inventory Matrix"}
+          </button>
+          
+          <button onClick={() => setActiveTab('sales')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'sales' ? 'rgba(16,185,129,0.15)' : 'transparent', color: activeTab === 'sales' ? '#34d399' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+            <i className="fas fa-cash-register" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "POS Terminal"}
+          </button>
+
+          {isManager && (
+            <>
+              {appState.isSidebarOpen && <div style={{ fontSize: '0.7rem', color: '#475569', fontWeight: 800, textTransform: 'uppercase', paddingLeft: '10px', marginTop: '20px' }}>Intelligence & Audit</div>}
+              <button onClick={() => setActiveTab('analytics')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'analytics' ? 'rgba(245,158,11,0.15)' : 'transparent', color: activeTab === 'analytics' ? '#fbbf24' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+                <i className="fas fa-chart-pie" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Data Analytics"}
+              </button>
+              <button onClick={() => setActiveTab('ledger')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'ledger' ? 'rgba(56,189,248,0.15)' : 'transparent', color: activeTab === 'ledger' ? '#38bdf8' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+                <i className="fas fa-book-journal-whills" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Audit Ledger"}
+              </button>
+            </>
           )}
-          
-          <div className="ent-nav-label" style={{ marginTop: '30px' }}>Security & Compliance</div>
-          {isAdmin && <div className={`ent-nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}><i className="fas fa-user-shield"></i> <span>Network Identities</span></div>}
-          {canExport && <div className={`ent-nav-item ${activeTab === 'ledger' ? 'active' : ''}`} onClick={() => setActiveTab('ledger')}><i className="fas fa-book-sparkles"></i> <span>Audit Stock Ledger</span></div>}
+
+          {isAdmin && (
+            <>
+              {appState.isSidebarOpen && <div style={{ fontSize: '0.7rem', color: '#475569', fontWeight: 800, textTransform: 'uppercase', paddingLeft: '10px', marginTop: '20px' }}>Administration</div>}
+              <button onClick={() => setActiveTab('users')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'users' ? 'rgba(239,68,68,0.15)' : 'transparent', color: activeTab === 'users' ? '#f87171' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+                <i className="fas fa-users-gear" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Access Control"}
+              </button>
+            </>
+          )}
         </div>
-        
-        <div className="ent-sidebar-footer" onClick={handleLogout}>
-          <i className="fas fa-power-off"></i>
-          <span>TERMINATE SESSION</span>
+
+        {/* User Profile Footer */}
+        <div style={{ padding: '20px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: isAdmin ? '#4f46e5' : '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>{auth.currentUser.charAt(0).toUpperCase()}</div>
+          {appState.isSidebarOpen && (
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div style={{ fontWeight: 800, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{auth.currentUser}</div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase' }}>{auth.userRole} Node</div>
+            </div>
+          )}
+          {appState.isSidebarOpen && <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><i className="fas fa-power-off"></i></button>}
         </div>
       </div>
 
-      {/* MAIN VIEWPORT */}
-      <div className="ent-main-content">
+      {/* --- MAIN CONTENT AREA (STRICT WIDTH & SCROLL) --- */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         
-        {/* DYNAMIC MODULE HEADER */}
-        <header className="ent-page-header">
-          <div className="header-info">
-            <h1>{activeTab.toUpperCase()} MODULE</h1>
-            <p>Node Registry: <span>Active</span> | Encryption: <span>AES-512</span></p>
+        {/* Top Header */}
+        <div style={{ height: '80px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px', flexShrink: 0 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', textTransform: 'capitalize' }}>{activeTab.replace('-', ' ')} Module</h2>
+            <p style={{ margin: '5px 0 0', fontSize: '0.85rem', color: '#64748b' }}>System Time: {new Date().toLocaleDateString()}</p>
           </div>
-          <div className="header-profile">
-            <div className="profile-details">
-              <div className="profile-name">{currentUser}</div>
-              <div className={`profile-role role-${userRole}`}>{userRole.toUpperCase()} PRIVILEGES</div>
-            </div>
-            <div className="profile-avatar">{currentUser.charAt(0).toUpperCase()}</div>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <span style={{ padding: '8px 16px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '30px', fontSize: '0.85rem', fontWeight: 700 }}><i className="fas fa-circle-check"></i> System Online</span>
           </div>
-        </header>
+        </div>
 
-        {/* --- MODULE DISPATCHER --- */}
-        
-        {/* DASHBOARD MODULE (INVENTORY OVERVIEW) */}
-        {activeTab === 'dashboard' && (
-          <div className="ent-module-container fade-in">
-            <div className="ent-kpi-row">
-              <div className="ent-kpi-card">
-                <div className="kpi-icon"><i className="fas fa-boxes-stacked"></i></div>
-                <div className="kpi-data"><h3>{products.length}</h3><p>Global SKUs</p></div>
-              </div>
-              <div className="ent-kpi-card success">
-                <div className="kpi-icon"><i className="fas fa-indian-rupee-sign"></i></div>
-                <div className="kpi-data"><h3>{products.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</h3><p>Asset Valuation</p></div>
-              </div>
-              <div className="ent-kpi-card warning">
-                <div className="kpi-icon"><i className="fas fa-truck-ramp-box"></i></div>
-                <div className="kpi-data"><h3>{analyticsData.lowStockAlerts.length}</h3><p>Stock Alerts</p></div>
-              </div>
-            </div>
+        {/* Tab Contents (Scrollable Area) */}
+        <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
 
-            <div className="ent-dashboard-grid">
-              <div className="ent-table-panel">
-                <div className="panel-header">
-                  <div className="panel-search">
-                    <i className="fas fa-search"></i>
-                    <input placeholder="Query Registry (Name, SKU, or Segment)..." value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} />
-                  </div>
-                  <div className="panel-actions">
-                    <button className="btn-refresh" onClick={fetchProducts}><i className="fas fa-sync"></i></button>
-                  </div>
+          {/* =================================================== */}
+          {/* TAB 1: INVENTORY DASHBOARD (Data Grid) */}
+          {/* =================================================== */}
+          {activeTab === 'dashboard' && (
+            <div style={{ animation: 'fadeIn 0.5s ease' }}>
+              {/* KPI Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '25px', marginBottom: '35px' }}>
+                <div style={{ background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '5px solid #4f46e5', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 700 }}>Total SKUs</p>
+                  <h3 style={{ margin: '10px 0 0', fontSize: '2rem', color: '#0f172a' }}>{products.length}</h3>
                 </div>
-                <table className="ent-master-table">
-                  <thead><tr><th>ENTITY IDENTITY</th><th>SKU REFERENCE</th><th>SEGMENT</th><th>AVAILABILITY</th><th>UNIT VALUE</th>{isAdmin && <th>OPERATIONS</th>}</tr></thead>
-                  <tbody>
-                    {products.filter(p=>p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
-                      <tr key={p.id}>
-                        <td className="entity-cell">
-                          {p.image_url ? (
-                            <img src={p.image_url.startsWith('http') ? p.image_url : `https://inv-pro-erp.onrender.com${p.image_url}`} alt="" />
-                          ) : <div className="entity-placeholder"><i className="fas fa-box"></i></div>}
-                          <div className="entity-name">{p.name}</div>
-                        </td>
-                        <td className="sku-cell">{p.sku}</td>
-                        <td className="segment-cell"><span className="ent-tag">{p.category}</span></td>
-                        <td className="stock-cell">
-                          <span className={`ent-badge ${p.quantity < 20 ? 'danger' : 'success'}`}>{p.quantity} Units</span>
-                        </td>
-                        <td className="price-cell">₹{p.price.toLocaleString()}</td>
-                        {isAdmin && (
-                          <td className="ops-cell">
-                            <button className="btn-op edit" onClick={()=> { setFormData({...p, image: null}); setEditingId(p.id); }}><i className="fas fa-pen-to-square"></i></button>
-                            <button className="btn-op delete" onClick={()=> handleDeleteProduct(p.id)}><i className="fas fa-trash-can"></i></button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {isAdmin && (
-                <div className="ent-form-panel">
-                  <h3>{editingId ? 'MODIFY CLOUD NODE' : 'INITIALIZE NEW SKU'}</h3>
-                  <p className="panel-sub">Metadata will be synchronized with cluster nodes.</p>
-                  <form className="ent-crud-form" onSubmit={handleInventorySubmit}>
-                    <div className="field-group">
-                        <label>IDENTITY NAME</label>
-                        <input value={formData.name} onChange={(e)=>setFormData({...formData, name: e.target.value})} required />
-                    </div>
-                    <div className="field-group">
-                        <label>SKU STRING</label>
-                        <input value={formData.sku} onChange={(e)=>setFormData({...formData, sku: e.target.value})} required />
-                    </div>
-                    <div className="field-row">
-                      <div className="field-group">
-                        <label>MARKET SEGMENT</label>
-                        <input value={formData.category} onChange={(e)=>setFormData({...formData, category: e.target.value})} required />
-                      </div>
-                      <div className="field-group">
-                        <label>VOLUME</label>
-                        <input type="number" value={formData.quantity} onChange={(e)=>setFormData({...formData, quantity: e.target.value})} required />
-                      </div>
-                    </div>
-                    <div className="field-group">
-                        <label>UNIT VALUATION (₹)</label>
-                        <input type="number" value={formData.price} onChange={(e)=>setFormData({...formData, price: e.target.value})} required />
-                    </div>
-                    <div className="upload-zone">
-                      <i className="fas fa-cloud-arrow-up"></i>
-                      <span>{formData.image ? formData.image.name : "ATTACH PHOTOGRAPH"}</span>
-                      <input type="file" id="imageInput" onChange={(e)=>setFormData({...formData, image: e.target.files[0]})} />
-                    </div>
-                    <button type="submit" className="btn-commit">{editingId ? 'AUTHORIZE UPDATE' : 'COMMIT REGISTRY'}</button>
-                    {editingId && <button type="button" className="btn-cancel" onClick={resetForm}>TERMINATE PROCESS</button>}
-                  </form>
+                <div style={{ background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '5px solid #10b981', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 700 }}>Total Assets Value</p>
+                  <h3 style={{ margin: '10px 0 0', fontSize: '2rem', color: '#0f172a' }}>₹{products.reduce((acc, p) => acc + (p.price * p.quantity), 0).toLocaleString()}</h3>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+                <div style={{ background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '5px solid #f59e0b', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 700 }}>Low Stock Warnings</p>
+                  <h3 style={{ margin: '10px 0 0', fontSize: '2rem', color: '#0f172a' }}>{products.filter(p => p.quantity < 10).length}</h3>
+                </div>
+                <div style={{ background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '5px solid #8b5cf6', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 700 }}>Total Units Logged</p>
+                  <h3 style={{ margin: '10px 0 0', fontSize: '2rem', color: '#0f172a' }}>{products.reduce((acc, p) => acc + p.quantity, 0)}</h3>
+                </div>
+              </div>
 
-        {/* POS MODULE (SMART SALES INTERFACE) */}
-        {activeTab === 'sales' && (
-          <div className="ent-pos-viewport fade-in">
-            <div className="ent-pos-catalog">
-              <div className="pos-scanner-box">
-                <i className="fas fa-barcode-read"></i>
-                <form onSubmit={handleBarcodeDispatch} style={{ flex: 1 }}>
-                  <input ref={barcodeRef} placeholder="SCANNING SUBSYSTEM ACTIVE... (Query SKU ID)" value={barcodeInput} onChange={(e)=>setBarcodeInput(e.target.value)} autoFocus />
-                </form>
-              </div>
-              <div className="pos-items-grid">
-                {products.filter(p => p.quantity > 0).map(p => (
-                  <div key={p.id} className="pos-sku-card" onClick={() => addToCart(p)}>
-                    <div className="sku-image-box">
-                        {p.image_url ? (
-                            <img src={p.image_url.startsWith('http') ? p.image_url : `https://inv-pro-erp.onrender.com${p.image_url}`} alt="" />
-                        ) : <i className="fas fa-box"></i>}
-                    </div>
-                    <h4>{p.name}</h4>
-                    <div className="sku-price">₹{p.price.toLocaleString()}</div>
-                    <div className="sku-meta">SKU: {p.sku} | Units: {p.quantity}</div>
+              {/* Toolbar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', width: '350px' }}>
+                    <i className="fas fa-search" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                    <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by Entity Name or SKU..." style={{ width: '100%', boxSizing: 'border-box', height: '48px', paddingLeft: '45px', border: '1px solid #cbd5e1', borderRadius: '10px', outline: 'none', backgroundColor: '#f8fafc' }} />
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="ent-pos-cart">
-              <div className="cart-head">
-                <h3><i className="fas fa-basket-shopping-simple"></i> TERMINAL QUEUE</h3>
-                <span className="cart-count">{cart.length} ITEMS</span>
-              </div>
-              <div className="cart-list">
-                {cart.length === 0 ? (
-                  <div className="cart-empty-state">
-                    <i className="fas fa-cash-register"></i>
-                    <p>Terminal state: Idle. <br/>Awaiting SKU scanning.</p>
-                  </div>
-                ) : (
-                  cart.map(item => (
-                    <div key={item.id} className="cart-item-row">
-                      <div className="item-info">
-                        <div className="name">{item.name}</div>
-                        <div className="price">₹{item.price} per node</div>
-                      </div>
-                      <div className="item-ops">
-                        <button onClick={() => updateCartVolume(item.id, -1)}>-</button>
-                        <span>{item.cartQty}</span>
-                        <button onClick={() => updateCartVolume(item.id, 1)}>+</button>
-                        <div className="total-val">₹{(item.price * item.cartQty).toLocaleString()}</div>
-                      </div>
-                    </div>
-                  ))
+                  <select value={posCategory} onChange={(e) => setPosCategory(e.target.value)} style={{ height: '48px', padding: '0 20px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', outline: 'none', fontWeight: 600 }}>
+                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                {isAdmin && (
+                  <button onClick={openAddModal} style={{ backgroundColor: '#4f46e5', color: '#fff', border: 'none', padding: '0 25px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', height: '48px' }}>
+                    <i className="fas fa-plus"></i> Initialize SKU
+                  </button>
                 )}
               </div>
-              <div className="cart-summary-section">
-                <div className="summary-row"><span>Consolidated Tax (18%):</span><span>INCLUSIVE</span></div>
-                <div className="summary-row grand"><span>PAYABLE TOTAL</span><span>₹{cart.reduce((a,b)=>a+(b.price*b.cartQty),0).toLocaleString()}</span></div>
-                <button onClick={finalizeTerminalTransaction} disabled={isCheckingOut || cart.length === 0} className="btn-finalize">
-                  {isCheckingOut ? <><i className="fas fa-sync fa-spin"></i> SYNCING RECORDS...</> : <><i className="fas fa-receipt"></i> GENERATE FISCAL INVOICE</>}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* ANALYTICS MODULE (BI ENGINE) 🔥 */}
-        {activeTab === 'analytics' && canExport && (
-          <div className="ent-bi-dashboard fade-in">
-            <div className="bi-stats-row">
-                <div className="bi-card">
-                    <div className="label">7-DAY PERFORMANCE</div>
-                    <div className="value">₹{analyticsData.totalRevenue.toLocaleString()}</div>
-                    <div className="trend">↑ 12.5% V/S LAST PERIOD</div>
-                </div>
-                <div className="bi-card">
-                    <div className="label">PROJECTED DAILY YIELD</div>
-                    <div className="value">₹{analyticsData.dailyProfit.toLocaleString()}</div>
-                    <div className="trend">MARGIN: OPTIMAL (25%)</div>
-                </div>
-                <div className="bi-card">
-                    <div className="label">DEPLETING STOCK NODES</div>
-                    <div className="value">{analyticsData.lowStockAlerts.length} SKUs</div>
-                    <div className="trend danger">REPLENISHMENT REQUIRED</div>
-                </div>
-            </div>
-
-            <div className="bi-charts-row">
-              <div className="bi-chart-panel main">
-                <div className="panel-head">REVENUE PROGRESSION MATRIX (7 DAYS)</div>
-                <div className="chart-container">{renderSalesChart()}</div>
-              </div>
-              <div className="bi-chart-panel side">
-                <div className="panel-head">MARKET SEGMENT SHARE</div>
-                <div className="chart-container">{renderCategoryMix()}</div>
-              </div>
-            </div>
-
-            <div className="bi-table-panel">
-                <div className="panel-head">HIGH-VELOCITY CATALOG NODES (TOP 5)</div>
-                <table className="ent-master-table">
-                  <thead><tr><th>PRODUCT ENTITY</th><th>VELOCITY (SOLD)</th><th>REVENUE YIELD</th><th>PERFORMANCE RANK</th></tr></thead>
+              {/* Data Table */}
+              <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                    <tr>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Visual / Entity</th>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>SKU Code</th>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Classification</th>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Volume</th>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Valuation</th>
+                      {isAdmin && <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>}
+                    </tr>
+                  </thead>
                   <tbody>
-                    {analyticsData.topProducts.map((p, i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 800 }}>{p.name}</td>
-                        <td><span className="ent-badge success">{p.total_sold} NODES</span></td>
-                        <td style={{ fontWeight: 900, color: '#10b981' }}>₹{parseFloat(p.total_revenue).toLocaleString()}</td>
-                        <td><div className={`rank-circle rank-${i+1}`}>{i+1}</div></td>
-                      </tr>
-                    ))}
+                    {currentProducts.length === 0 ? (
+                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>No entities match current parameters.</td></tr>
+                    ) : (
+                      currentProducts.map(p => (
+                        <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <td style={{ padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            {p.image_url ? (
+                              <img src={p.image_url.startsWith('http') ? p.image_url : `${API_BASE.replace('/api', '')}${p.image_url}`} style={{ width: '50px', height: '50px', borderRadius: '10px', objectFit: 'cover' }} alt="Product" />
+                            ) : (
+                              <div style={{ width: '50px', height: '50px', borderRadius: '10px', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}><i className="fas fa-image"></i></div>
+                            )}
+                            <span style={{ fontWeight: 800, color: '#0f172a' }}>{p.name}</span>
+                          </td>
+                          <td style={{ padding: '15px 20px', fontFamily: 'monospace', color: '#64748b' }}>{p.sku}</td>
+                          <td style={{ padding: '15px 20px' }}><span style={{ backgroundColor: '#e0e7ff', color: '#4f46e5', padding: '5px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800 }}>{p.category}</span></td>
+                          <td style={{ padding: '15px 20px' }}><span style={{ backgroundColor: p.quantity < 10 ? '#fee2e2' : '#dcfce7', color: p.quantity < 10 ? '#ef4444' : '#166534', padding: '5px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800 }}>{p.quantity} Units</span></td>
+                          <td style={{ padding: '15px 20px', fontWeight: 800 }}>₹{p.price.toLocaleString()}</td>
+                          {isAdmin && (
+                            <td style={{ padding: '15px 20px', textAlign: 'right' }}>
+                              <button onClick={() => openEditModal(p)} style={{ width: '36px', height: '36px', borderRadius: '8px', border: 'none', backgroundColor: '#f1f5f9', color: '#3b82f6', cursor: 'pointer', marginRight: '10px' }}><i className="fas fa-edit"></i></button>
+                              <button onClick={() => deleteProduct(p.id)} style={{ width: '36px', height: '36px', borderRadius: '8px', border: 'none', backgroundColor: '#fee2e2', color: '#ef4444', cursor: 'pointer' }}><i className="fas fa-trash"></i></button>
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
-            </div>
-          </div>
-        )}
-
-        {/* LEDGER MODULE (AUDIT PASSBOOK) */}
-        {activeTab === 'ledger' && canExport && (
-          <div className="ent-audit-viewport fade-in">
-            <div className="ent-table-panel full">
-              <div className="panel-header" style={{ background: '#f8fafc' }}>
-                <h3>IMMUTABLE AUDIT TRAIL</h3>
-                <div className="ledger-meta">SECURITY HASH: SHA-512 ENABLED ●</div>
+                {/* Pagination Controls */}
+                <div style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                  <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredProducts.length)} of {filteredProducts.length} entries</span>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button disabled={currentPage === 1} onClick={() => setCurrentPage(p=>p-1)} style={{ padding: '8px 16px', border: '1px solid #cbd5e1', backgroundColor: '#fff', borderRadius: '8px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}>Previous</button>
+                    <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p=>p+1)} style={{ padding: '8px 16px', border: '1px solid #cbd5e1', backgroundColor: '#fff', borderRadius: '8px', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}>Next</button>
+                  </div>
+                </div>
               </div>
-              <table className="ent-master-table">
-                <thead><tr><th>TIMESTAMP</th><th>TARGET SKU</th><th>ACTIVITY TYPE</th><th>DELTA VOLUME</th><th>FINAL BALANCE</th><th>REMARKS</th></tr></thead>
-                <tbody>
-                  {ledgerData.map(log => (
-                    <tr key={log.id}>
-                      <td className="ts-cell">{new Date(log.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                      <td style={{ fontWeight: 800 }}>{log.product_name}</td>
-                      <td><span className="activity-tag">{log.transaction_type}</span></td>
-                      <td style={{ fontWeight: 900, fontSize: '1.1rem', color: log.quantity_changed > 0 ? '#10b981' : '#ef4444' }}>
-                        {log.quantity_changed > 0 ? `+${log.quantity_changed}` : log.quantity_changed}
-                      </td>
-                      <td style={{ fontWeight: 800 }}>{log.running_balance}</td>
-                      <td className="remarks-cell">{log.notes}</td>
-                    </tr>
+
+              {/* Data Mutation Modal */}
+              <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Modify Existing Entity" : "Initialize New SKU"}>
+                <form onSubmit={handleInventorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Entity Designation (Name)</label>
+                      <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '48px', padding: '0 15px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>SKU Reference</label>
+                      <input required value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '48px', padding: '0 15px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Classification / Category</label>
+                    <input required value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '48px', padding: '0 15px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Initial Volume (Stock)</label>
+                      <input required type="number" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '48px', padding: '0 15px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Unit Valuation (₹)</label>
+                      <input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '48px', padding: '0 15px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Visual Asset (Image)</label>
+                    <div style={{ border: '2px dashed #cbd5e1', padding: '30px', borderRadius: '12px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                      <input type="file" id="fileUpload" onChange={e => setFormData({...formData, image: e.target.files[0]})} style={{ display: 'none' }} />
+                      <label htmlFor="fileUpload" style={{ cursor: 'pointer', color: '#4f46e5', fontWeight: 800 }}>
+                        <i className="fas fa-cloud-upload-alt" style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}></i>
+                        {formData.image ? formData.image.name : "Click to select or drag file here"}
+                      </label>
+                    </div>
+                  </div>
+                  <button type="submit" style={{ width: '100%', height: '54px', backgroundColor: '#4f46e5', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', marginTop: '10px' }}>
+                    {editingId ? 'Authorize Update' : 'Commit New Entry'}
+                  </button>
+                </form>
+              </Modal>
+            </div>
+          )}
+
+          {/* =================================================== */}
+          {/* TAB 2: SMART POS TERMINAL */}
+          {/* =================================================== */}
+          {activeTab === 'sales' && (
+            <div style={{ display: 'flex', gap: '30px', height: 'calc(100vh - 160px)', animation: 'fadeIn 0.5s ease' }}>
+              
+              {/* Product Grid Panel */}
+              <div style={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', gap: '20px' }}>
+                  <form onSubmit={handleBarcodeScan} style={{ flex: 1, position: 'relative' }}>
+                    <i className="fas fa-barcode" style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.5rem', color: '#4f46e5' }}></i>
+                    <input autoFocus value={barcodeInput} onChange={(e)=>setBarcodeInput(e.target.value)} placeholder="Hardware Scanner Ready. Focus here to scan..." style={{ width: '100%', boxSizing: 'border-box', height: '60px', paddingLeft: '60px', backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.2rem', fontWeight: 700, outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#4f46e5'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
+                  </form>
+                  <select value={posCategory} onChange={(e) => setPosCategory(e.target.value)} style={{ width: '200px', padding: '0 20px', borderRadius: '12px', border: '2px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 700, outline: 'none' }}>
+                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px', paddingBottom: '20px', paddingRight: '10px' }}>
+                  {filteredProducts.filter(p => p.quantity > 0).map(p => (
+                    <div key={p.id} onClick={() => addToCart(p)} style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }} onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.1)'; }} onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.05)'; }}>
+                      {p.image_url ? (
+                        <img src={p.image_url.startsWith('http') ? p.image_url : `${API_BASE.replace('/api', '')}${p.image_url}`} style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '12px', marginBottom: '15px' }} alt="" />
+                      ) : (
+                        <div style={{ width: '100px', height: '100px', backgroundColor: '#f1f5f9', borderRadius: '12px', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: '#cbd5e1' }}><i className="fas fa-box"></i></div>
+                      )}
+                      <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem', color: '#0f172a' }}>{p.name}</h4>
+                      <p style={{ margin: '0 0 10px 0', fontWeight: 900, color: '#10b981', fontSize: '1.2rem' }}>₹{p.price.toLocaleString()}</p>
+                      <span style={{ fontSize: '0.75rem', backgroundColor: '#f1f5f9', color: '#64748b', padding: '4px 10px', borderRadius: '20px', fontWeight: 700 }}>Stock: {p.quantity}</span>
+                    </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Cart / Checkout Panel */}
+              <div style={{ flex: 1, backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+                <div style={{ padding: '25px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}><i className="fas fa-shopping-cart" style={{ color: '#4f46e5', marginRight: '10px' }}></i> Active Session</h3>
+                  <span style={{ backgroundColor: '#4f46e5', color: '#fff', padding: '5px 15px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800 }}>{cart.length} ITEMS</span>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                  {cart.length === 0 ? (
+                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#94a3b8' }}>
+                      <i className="fas fa-receipt" style={{ fontSize: '4rem', marginBottom: '20px', opacity: 0.5 }}></i>
+                      <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>Queue is empty. Scan to begin.</p>
+                    </div>
+                  ) : (
+                    cart.map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem' }}>{item.name}</h4>
+                          <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 800 }}>₹{item.price} / unit</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <button onClick={()=>updateCartQty(item.id, -1)} style={{ width: '32px', height: '32px', border: 'none', background: 'none', color: '#ef4444', fontWeight: 800, cursor: 'pointer' }}>-</button>
+                            <span style={{ width: '30px', textAlign: 'center', fontWeight: 800 }}>{item.cartQty}</span>
+                            <button onClick={()=>updateCartQty(item.id, 1)} style={{ width: '32px', height: '32px', border: 'none', background: 'none', color: '#10b981', fontWeight: 800, cursor: 'pointer' }}>+</button>
+                          </div>
+                          <div style={{ width: '80px', textAlign: 'right', fontWeight: 900, fontSize: '1.1rem' }}>
+                            ₹{(item.price * item.cartQty).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div style={{ padding: '30px', borderTop: '2px dashed #e2e8f0', backgroundColor: '#f8fafc' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', color: '#64748b', fontWeight: 600 }}>
+                    <span>Subtotal</span>
+                    <span>₹{cart.reduce((s,i)=>s+(i.price*i.cartQty),0).toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', color: '#64748b', fontWeight: 600 }}>
+                    <span>Tax (Inclusive 18%)</span>
+                    <span>₹0.00</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>Net Payable</span>
+                    <span style={{ fontSize: '2rem', fontWeight: 900, color: '#10b981' }}>₹{cart.reduce((s,i)=>s+(i.price*i.cartQty),0).toLocaleString()}</span>
+                  </div>
+                  <button onClick={checkout} disabled={cart.length === 0 || isCheckingOut} style={{ width: '100%', height: '60px', backgroundColor: cart.length === 0 ? '#cbd5e1' : '#4f46e5', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '1.2rem', fontWeight: 800, cursor: cart.length === 0 ? 'not-allowed' : 'pointer', transition: '0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+                    {isCheckingOut ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-print"></i> Generate Invoice & Sync</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================== */}
+          {/* TAB 3: BUSINESS ANALYTICS (BI HUB) */}
+          {/* =================================================== */}
+          {activeTab === 'analytics' && isManager && (
+            <div style={{ animation: 'fadeIn 0.5s ease' }}>
+               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px', marginBottom: '30px' }}>
+                 {/* Trend Chart */}
+                 <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ margin: '0 0 25px 0', fontSize: '1.2rem' }}><i className="fas fa-chart-area" style={{ color: '#4f46e5', marginRight: '10px' }}></i> Revenue Trajectory (7 Days)</h3>
+                    <div style={{ height: '300px' }}>
+                      <Line 
+                        data={{
+                          labels: analyticsData.salesTrend.map(d => new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })),
+                          datasets: [{
+                            label: 'Daily Revenue',
+                            data: analyticsData.salesTrend.map(d => d.daily_revenue),
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                          }]
+                        }}
+                        options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }}
+                      />
+                    </div>
+                 </div>
+
+                 {/* Doughnut Chart */}
+                 <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ margin: '0 0 25px 0', fontSize: '1.2rem' }}><i className="fas fa-chart-pie" style={{ color: '#f59e0b', marginRight: '10px' }}></i> Category Spread</h3>
+                    <div style={{ height: '300px' }}>
+                      <Doughnut 
+                        data={{
+                          labels: analyticsData.categorySales.map(c => c.category),
+                          datasets: [{
+                            data: analyticsData.categorySales.map(c => c.revenue),
+                            backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+                          }]
+                        }}
+                        options={{ maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } }}
+                      />
+                    </div>
+                 </div>
+               </div>
+
+               {/* Top Performers Table */}
+               <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+                   <h3 style={{ margin: 0, fontSize: '1.2rem' }}><i className="fas fa-trophy" style={{ color: '#eab308', marginRight: '10px' }}></i> High-Performance Entities</h3>
+                   <button onClick={() => window.print()} style={{ padding: '10px 20px', backgroundColor: '#0f172a', color: '#fff', borderRadius: '8px', border: 'none', fontWeight: 700, cursor: 'pointer' }}><i className="fas fa-download"></i> Export Data</button>
+                 </div>
+                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                   <thead style={{ backgroundColor: '#f8fafc' }}>
+                     <tr>
+                       <th style={{ padding: '15px', color: '#475569' }}>Rank</th>
+                       <th style={{ padding: '15px', color: '#475569' }}>Entity Name</th>
+                       <th style={{ padding: '15px', color: '#475569' }}>Units Cleared</th>
+                       <th style={{ padding: '15px', color: '#475569', textAlign: 'right' }}>Capital Yield</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {analyticsData.topProducts.map((p, i) => (
+                       <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                         <td style={{ padding: '15px' }}><div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: i === 0 ? '#fef08a' : '#f1f5f9', color: i === 0 ? '#ca8a04' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>{i + 1}</div></td>
+                         <td style={{ padding: '15px', fontWeight: 800 }}>{p.name}</td>
+                         <td style={{ padding: '15px' }}><span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '5px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700 }}>{p.total_sold} units</span></td>
+                         <td style={{ padding: '15px', textAlign: 'right', fontWeight: 900, color: '#10b981', fontSize: '1.1rem' }}>₹{parseFloat(p.total_revenue).toLocaleString()}</td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+          )}
+
+          {/* =================================================== */}
+          {/* TAB 4: AUDIT LEDGER */}
+          {/* =================================================== */}
+          {activeTab === 'ledger' && isManager && (
+            <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', animation: 'fadeIn 0.5s ease', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div style={{ padding: '25px 30px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem' }}><i className="fas fa-list-check" style={{ color: '#38bdf8', marginRight: '10px' }}></i> Immutable Transaction Ledger</h3>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#f8fafc' }}>
+                  <tr>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem' }}>Timestamp</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem' }}>Node / Entity</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem' }}>Operation</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem' }}>Delta</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem' }}>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledgerData.length === 0 ? (
+                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>Audit logs are empty.</td></tr>
+                  ) : (
+                    ledgerData.map(log => (
+                      <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '20px 30px', color: '#64748b', fontSize: '0.9rem' }}>{new Date(log.created_at).toLocaleString()}</td>
+                        <td style={{ padding: '20px 30px', fontWeight: 800 }}>{log.product_name}</td>
+                        <td style={{ padding: '20px 30px' }}><span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '5px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800 }}>{log.transaction_type}</span></td>
+                        <td style={{ padding: '20px 30px', fontWeight: 900, color: log.quantity_changed > 0 ? '#10b981' : '#ef4444' }}>{log.quantity_changed > 0 ? `+${log.quantity_changed}` : log.quantity_changed}</td>
+                        <td style={{ padding: '20px 30px', fontWeight: 800 }}>{log.running_balance}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* USER MODULE (SECURITY CONFIG) */}
-        {activeTab === 'users' && isAdmin && (
-          <div className="ent-security-viewport fade-in">
-            <div className="ent-table-panel full">
-              <div className="panel-header">
-                <h3>NETWORK IDENTITY POOL</h3>
-                <div className="panel-badge">ROLE BASED ACCESS CONTROL (RBAC) ACTIVE</div>
+          {/* =================================================== */}
+          {/* TAB 5: ACCESS CONTROL (USERS) */}
+          {/* =================================================== */}
+          {activeTab === 'users' && isAdmin && (
+            <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', animation: 'fadeIn 0.5s ease', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div style={{ padding: '25px 30px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem' }}><i className="fas fa-user-shield" style={{ color: '#ef4444', marginRight: '10px' }}></i> Network Access Control (RBAC)</h3>
               </div>
-              <table className="ent-master-table">
-                <thead><tr><th>NETWORK ID</th><th>SECURE IDENTITY</th><th>LEVEL</th><th>AUTHORITY ASSIGNMENT</th></tr></thead>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#f8fafc' }}>
+                  <tr>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem' }}>UID</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem' }}>Identity</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem' }}>Clearance Level</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem' }}>Modify Rights</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {usersList.map(u => (
-                    <tr key={u.id}>
-                      <td className="uid-cell">#NODE-{u.id.toString().padStart(4, '0')}</td>
-                      <td className="identity-cell">
-                        <div className="ident-avatar">{u.username.charAt(0).toUpperCase()}</div>
-                        <div className="ident-name">{u.username} {u.username === currentUser && <span className="self-tag">ME</span>}</div>
+                    <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '20px 30px', fontFamily: 'monospace', color: '#94a3b8' }}>#{u.id}</td>
+                      <td style={{ padding: '20px 30px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{ width: '35px', height: '35px', borderRadius: '8px', backgroundColor: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{u.username.charAt(0).toUpperCase()}</div>
+                        {u.username}
+                        {u.username === auth.currentUser && <span style={{ fontSize: '0.6rem', backgroundColor: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '10px', marginLeft: '10px' }}>YOU</span>}
                       </td>
-                      <td><span className={`role-badge ${u.role}`}>{u.role.toUpperCase()}</span></td>
-                      <td>
-                        <select className="ent-select" value={u.role} disabled={u.username === currentUser} onChange={(e)=> {
-                          axios.put(`${API_BASE}/users/${u.id}/role`, { role: e.target.value }).then(()=>fetchUsersList());
-                        }}>
-                          <option value="staff">LEVEL 1: STANDARD STAFF</option>
-                          <option value="manager">LEVEL 2: NODE MANAGER</option>
-                          <option value="admin">LEVEL 3: SUPER ADMINISTRATOR</option>
+                      <td style={{ padding: '20px 30px' }}>
+                        <span style={{ backgroundColor: u.role === 'admin' ? '#fee2e2' : u.role === 'manager' ? '#e0f2fe' : '#f1f5f9', color: u.role === 'admin' ? '#991b1b' : u.role === 'manager' ? '#075985' : '#475569', padding: '6px 15px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td style={{ padding: '20px 30px' }}>
+                        <select 
+                          value={u.role} 
+                          disabled={u.username === auth.currentUser}
+                          onChange={(e) => {
+                            axios.put(`${API_BASE}/users/${u.id}/role`, { role: e.target.value })
+                              .then(() => { fetchAdminData(); showToast(`Role updated for ${u.username}`, "success"); })
+                              .catch(() => showToast("Failed to update role", "error"));
+                          }}
+                          style={{ width: '200px', height: '40px', padding: '0 15px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontWeight: 600, cursor: u.username === auth.currentUser ? 'not-allowed' : 'pointer' }}
+                        >
+                          <option value="staff">Staff (Terminal Only)</option>
+                          <option value="manager">Manager (Terminal + Audit)</option>
+                          <option value="admin">Admin (Full Access)</option>
                         </select>
                       </td>
                     </tr>
@@ -903,14 +959,12 @@ function App() {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
+
+        </div>
       </div>
     </div>
   );
 }
-
-// PERMISSION LOGIC WRAPPERS
-const canExport = true; // Placeholder for future permission logic expansion
 
 export default App;
