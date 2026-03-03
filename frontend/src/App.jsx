@@ -18,7 +18,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // ===================================================
-// ENTERPRISE CHART CONFIGURATION (Chart.js 4.x)
+// 1. ENTERPRISE CHART CONFIGURATION (Chart.js 4.x)
 // ===================================================
 ChartJS.register(
   CategoryScale, 
@@ -32,10 +32,16 @@ ChartJS.register(
   Legend
 );
 
+/**
+ * INV-PRO BUSINESS SUITE - CORE APPLICATION
+ * @description Enterprise-grade ERP with Real-time POS, Analytics, and RBAC.
+ */
 function App() {
   // ===================================================
-  // 1. MASTER STATE MANAGEMENT (FULL DATA SUITE)
+  // 2. MASTER STATE MANAGEMENT (FULL DATA SUITE)
   // ===================================================
+  
+  // Core Business Data
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]); 
   const [usersList, setUsersList] = useState([]); 
@@ -48,14 +54,20 @@ function App() {
     salesTrend: []
   });
   
-  // UI & Routing States
+  // Navigation & UI Management
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Inventory Form Data
+  // Inventory Form Data (Cloudinary Integrated)
   const [formData, setFormData] = useState({ 
-    name: '', sku: '', category: '', quantity: '', price: '', image: null, image_url: '' 
+    name: '', 
+    sku: '', 
+    category: '', 
+    quantity: '', 
+    price: '', 
+    image: null, 
+    image_url: '' 
   });
   
   // Authentication & Session Persistence
@@ -66,43 +78,58 @@ function App() {
   const [userRole, setUserRole] = useState('staff'); 
   const [loginType, setLoginType] = useState('admin');
 
-  // SMART POS CART & SCANNER LOGIC
+  // Smart POS Terminal States
   const [cart, setCart] = useState([]);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  // API BASE URL (CENTRALIZED FOR RENDER)
+  // Global Configuration
   const API_BASE = 'https://inv-pro-erp.onrender.com/api';
 
   // ===================================================
-  // 2. DATA SYNCHRONIZATION (REST API LAYER)
+  // 3. DATA SYNCHRONIZATION (REST API LAYER)
   // ===================================================
   
+  /**
+   * Fetches the entire inventory catalog
+   */
   const fetchProducts = () => {
     axios.get(`${API_BASE}/products`)
       .then(res => setProducts(res.data))
-      .catch(err => console.error("Inventory Sync Error:", err));
+      .catch(err => console.error("Critical Inventory Fetch Failure:", err));
   };
 
+  /**
+   * Fetches global sales history for reporting
+   */
   const fetchSales = () => {
     axios.get(`${API_BASE}/sales`)
       .then(res => setSales(res.data))
-      .catch(err => console.error("Sales Sync Error:", err));
+      .catch(err => console.error("Sales History Sync Failure:", err));
   };
 
+  /**
+   * Fetches user list for RBAC Management (Admin Only)
+   */
   const fetchUsersList = () => {
     axios.get(`${API_BASE}/users`)
       .then(res => setUsersList(res.data))
-      .catch(err => console.error("User Audit Error:", err));
+      .catch(err => console.error("User Audit Failure:", err));
   };
 
+  /**
+   * Fetches the Master Stock Ledger (Audit Trail)
+   */
   const fetchLedger = () => {
     axios.get(`${API_BASE}/ledger`)
       .then(res => setLedgerData(res.data))
-      .catch(err => console.error("Ledger Access Error:", err));
+      .catch(err => console.error("Audit Ledger Access Denied:", err));
   };
 
-  // 🔥 BUSINESS INTELLIGENCE DATA FETCH 🔥
+  /**
+   * 🔥 BUSINESS INTELLIGENCE DATA ENGINE 🔥
+   * Aggregates data for the Analytics Dashboard
+   */
   const fetchAnalytics = async () => {
     try {
       const [top, cat, trend] = await Promise.all([
@@ -116,11 +143,12 @@ function App() {
         salesTrend: trend.data
       });
     } catch (err) {
-      console.error("Analytics Engine Error:", err);
+      console.error("Master Analytics Sync Failed:", err);
     }
   };
 
-  // Session Bootstrapper
+  // --- Lifecycles & Persistence ---
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role'); 
@@ -136,16 +164,17 @@ function App() {
     }
   }, []);
 
-  // Conditional Data Fetching based on Tabs
   useEffect(() => {
+    // Strategic Tab-based Data Polling
     if (activeTab === 'users' && userRole === 'admin') fetchUsersList();
     if (activeTab === 'ledger' && (userRole === 'admin' || userRole === 'manager')) fetchLedger();
     if (activeTab === 'analytics' && (userRole === 'admin' || userRole === 'manager')) fetchAnalytics();
   }, [activeTab, userRole]);
 
   // ===================================================
-  // 3. AUTHENTICATION & ACCESS CONTROL (RBAC)
+  // 4. AUTHENTICATION & SECURITY CONTROL
   // ===================================================
+  
   const handleAuthChange = (e) => {
     setAuthData({ ...authData, [e.target.name]: e.target.value });
   };
@@ -159,10 +188,12 @@ function App() {
       .then(res => {
         if (!showSignup) {
           const actualRole = res.data.role || 'staff';
+          // Portal Security Guard
           if (actualRole !== loginType) {
-            alert(`🛑 Unauthorized! Access to '${loginType}' portal is restricted for your role.`);
+            alert(`🛑 Unauthorized! Your profile '${actualRole.toUpperCase()}' does not match the '${loginType.toUpperCase()}' portal. Use correct login tab.`);
             return; 
           }
+          
           localStorage.setItem('token', res.data.token);
           localStorage.setItem('username', res.data.username);
           localStorage.setItem('role', actualRole); 
@@ -174,12 +205,12 @@ function App() {
           fetchProducts();
           fetchSales();
         } else { 
-          alert("✅ Registration Successful! Please login as Staff."); 
+          alert("✅ Network Access Granted! Your account is created. Please login as Staff."); 
           setShowSignup(false); 
           setLoginType('staff'); 
         }
       })
-      .catch(err => alert(`❌ Authentication Error: ${err.response?.data?.error || "System Unavailable"}`));
+      .catch(err => alert(`❌ Authentication Failed: ${err.response?.data?.error || "Server Unreachable"}`));
   };
 
   const handleLogout = () => { 
@@ -189,11 +220,12 @@ function App() {
   };
 
   // ===================================================
-  // 4. INVENTORY OPERATIONS (CRUD SUITE)
+  // 5. INVENTORY MANAGEMENT (CRUD SYSTEM)
   // ===================================================
+  
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (userRole !== 'admin') return alert("🛑 Admin privileges required for this action.");
+    if (userRole !== 'admin') return alert("🛑 Administrative privileges required for this mutation.");
 
     const data = new FormData();
     data.append('name', formData.name);
@@ -202,7 +234,7 @@ function App() {
     data.append('quantity', formData.quantity);
     data.append('price', formData.price);
 
-    // Smart Image Handling (Cloudinary vs Local)
+    // Dynamic Image Routing
     if (formData.image instanceof File) {
       data.append('image', formData.image);
     } else {
@@ -219,7 +251,7 @@ function App() {
       fetchProducts(); 
       if(userRole === 'admin' || userRole === 'manager') fetchLedger();
       resetForm(); 
-    }).catch(err => alert("❌ Update Error: " + err.message));
+    }).catch(err => alert("❌ Mutation Failure: " + err.message));
   };
 
   const resetForm = () => {
@@ -229,20 +261,22 @@ function App() {
   };
 
   const handleDelete = (id) => {
-    if (userRole !== 'admin') return;
-    if(window.confirm("⚠️ Permanent Delete? This will remove all associated audit history.")) {
+    if (userRole !== 'admin') return alert("🛑 Permission Denied.");
+    if(window.confirm("⚠️ SYSTEM WARNING: Are you sure you want to permanently purge this record? This action will impact historical audit logs.")) {
       axios.delete(`${API_BASE}/products/${id}`).then(() => fetchProducts());
     }
   };
 
   // ===================================================
-  // 5. SMART POS SYSTEM (TERMINAL LOGIC)
+  // 6. SMART POS SYSTEM (POINT OF SALE)
   // ===================================================
+  
   const addToCart = (product) => {
-    if (product.quantity <= 0) return alert(`❌ ${product.name} is Out of Stock!`);
+    if (product.quantity <= 0) return alert(`❌ ${product.name} is currently Out of Stock!`);
+    
     const existing = cart.find(item => item.id === product.id);
     if (existing) {
-      if (existing.cartQty >= product.quantity) return alert("⚠️ Stock Limit reached in cart.");
+      if (existing.cartQty >= product.quantity) return alert("⚠️ Inventory threshold reached for this session.");
       setCart(cart.map(item => item.id === product.id ? { ...item, cartQty: item.cartQty + 1 } : item));
     } else {
       setCart([...cart, { ...product, cartQty: 1 }]);
@@ -254,7 +288,7 @@ function App() {
     if (!item) return;
     const newQty = item.cartQty + delta;
     if (newQty <= 0) setCart(cart.filter(i => i.id !== productId));
-    else if (newQty > item.quantity) alert("⚠️ Inventory Limit reached.");
+    else if (newQty > item.quantity) alert("⚠️ Stock Limit! Cannot exceed available inventory.");
     else setCart(cart.map(i => i.id === productId ? { ...i, cartQty: newQty } : i));
   };
 
@@ -262,25 +296,37 @@ function App() {
     e.preventDefault();
     if (!barcodeInput.trim()) return;
     const product = products.find(p => p.sku.toLowerCase() === barcodeInput.toLowerCase().trim());
-    if (product) { addToCart(product); setBarcodeInput(''); }
-    else { alert("❌ Product SKU not found."); setBarcodeInput(''); }
+    if (product) { 
+      addToCart(product); 
+      setBarcodeInput(''); 
+    } else { 
+      alert("❌ Critical Error: Product SKU not found in database."); 
+      setBarcodeInput(''); 
+    }
   };
 
   // ===================================================
-  // 6. ENTERPRISE BILLING ENGINE (jsPDF)
+  // 7. ENTERPRISE BILLING ENGINE (jsPDF Integration)
   // ===================================================
+  
   const generateInvoice = (cartItems, totalAmount) => {
     const doc = new jsPDF();
     const invoiceNo = Math.floor(100000 + Math.random() * 900000);
     
-    // Header & Branding
+    // Professional Header
     doc.setFontSize(22); doc.setTextColor(79, 70, 229);
     doc.text("NEXT-GEN CLOUD ERP", 105, 20, { align: "center" });
     
+    doc.setFontSize(12); doc.setTextColor(15, 23, 42);
+    doc.text("Master Tax Invoice / Cash Receipt", 105, 28, { align: "center" });
+
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, 35, 195, 35);
+
     doc.setFontSize(10); doc.setTextColor(100, 116, 139);
-    doc.text(`Invoice #INV-${invoiceNo}`, 15, 45);
-    doc.text(`Cashier: ${currentUser.toUpperCase()}`, 140, 45);
-    doc.text(`DateTime: ${new Date().toLocaleString()}`, 15, 52);
+    doc.text(`Invoice Ref: #INV-${invoiceNo}`, 15, 45);
+    doc.text(`Cashier Node: ${currentUser.toUpperCase()}`, 140, 45);
+    doc.text(`System Timestamp: ${new Date().toLocaleString()}`, 15, 52);
 
     const tableBody = cartItems.map(item => [
       item.name, 
@@ -291,22 +337,28 @@ function App() {
 
     autoTable(doc, {
       startY: 65,
-      head: [['Product Description', 'Quantity', 'Rate', 'Total']],
+      head: [['Product Description', 'Quantity', 'Unit Rate', 'Total Capital']],
       body: tableBody,
       headStyles: { fillColor: [79, 70, 229] },
-      theme: 'striped'
+      theme: 'striped',
+      styles: { fontSize: 9, cellPadding: 5 }
     });
 
     const finalY = doc.lastAutoTable.finalY + 15;
     doc.setFontSize(14); doc.setTextColor(16, 185, 129);
-    doc.text(`Grand Total: Rs. ${totalAmount}`, 140, finalY);
-    doc.save(`Invoice_INV_${invoiceNo}.pdf`);
+    doc.text(`Grand Total Payable: Rs. ${totalAmount}`, 140, finalY, { align: 'right' });
+    
+    doc.setFontSize(10); doc.setTextColor(148, 163, 184);
+    doc.text("Thank you for using INV-PRO Suite. Digital copy generated via Cloud.", 105, finalY + 30, { align: "center" });
+
+    doc.save(`Invoice_#${invoiceNo}_${Date.now()}.pdf`);
   };
 
   const processBulkCheckout = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0) return alert("Terminal empty. Scanning required.");
     setIsCheckingOut(true);
     try {
+      // Transactional Concurrency
       await Promise.all(cart.map(item => 
         axios.post(`${API_BASE}/sales`, { 
           product_id: item.id, 
@@ -315,67 +367,75 @@ function App() {
       ));
       const grandTotal = cart.reduce((sum, item) => sum + (item.price * item.cartQty), 0);
       generateInvoice(cart, grandTotal);
-      setCart([]); fetchProducts(); fetchSales(); alert("✅ Checkout Successful!");
+      setCart([]); fetchProducts(); fetchSales(); 
+      alert("✅ Transaction Success: Records synchronized with Cloud Ledger.");
     } catch (error) { 
-      alert("❌ System Sync Failure! Please check connectivity."); 
+      alert("❌ Synchronization Failure: Contact system administrator."); 
     } finally { 
       setIsCheckingOut(false); 
     }
   };
 
   // ===================================================
-  // 7. PERMISSION & LOGIC HELPERS
+  // 8. SPLIT-SCREEN AUTHENTICATION UI
   // ===================================================
-  const isAdmin = userRole === 'admin';
-  const canExport = userRole === 'admin' || userRole === 'manager';
-
-  // ===================================================
-  // 8. SPLIT-SCREEN AUTHENTICATION RENDER
-  // ===================================================
+  
   if (!isLoggedIn) {
     return (
       <div style={{ display: 'flex', height: '100vh', width: '100vw', background: '#f8fafc', overflow: 'hidden' }}>
-        {/* Branding Section */}
+        {/* Branding Side */}
         <div style={{ flex: 1.2, background: 'linear-gradient(135deg, #0f172a 0%, #312e81 100%)', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px 80px', position: 'relative' }}>
-          <h1 style={{ fontSize: '3.5rem', fontWeight: 800, margin: '0 0 20px' }}>INV-PRO <br/><span style={{ color: '#818cf8' }}>Business Suite</span></h1>
-          <p style={{ fontSize: '1.2rem', color: '#cbd5e1', lineHeight: 1.6, maxWidth: '500px' }}>
-            Enterprise-grade Cloud Architecture with Real-time POS, Role-based security, and High-fidelity Business Analytics.
-          </p>
-          <div style={{ display: 'flex', gap: '40px', marginTop: '30px' }}>
-            <div style={{ borderLeft: '3px solid #10b981', paddingLeft: '15px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.8rem' }}>99.9%</h3>
-              <p style={{ margin: 0, color: '#94a3b8' }}>Uptime Reliability</p>
+          <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '400px', height: '400px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+          <div style={{ zIndex: 1 }}>
+            <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.1)', padding: '10px 20px', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.2)', marginBottom: '20px' }}>
+              <i className="fas fa-cloud-bolt" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '2px' }}>ENTERPRISE EDITION 3.0</span>
             </div>
-            <div style={{ borderLeft: '3px solid #f59e0b', paddingLeft: '15px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.8rem' }}>AES-256</h3>
-              <p style={{ margin: 0, color: '#94a3b8' }}>Security Standard</p>
+            <h1 style={{ fontSize: '4.5rem', fontWeight: 800, margin: '0 0 20px', lineHeight: 1.1 }}>INV-PRO <br/><span style={{ color: '#818cf8' }}>Business Suite</span></h1>
+            <p style={{ fontSize: '1.3rem', color: '#cbd5e1', lineHeight: 1.6, maxWidth: '550px' }}>
+              Advanced Cloud Architecture with Zero-Latency Smart POS, Multi-role Security, and High-fidelity Visual Analytics.
+            </p>
+            <div style={{ display: 'flex', gap: '50px', marginTop: '40px' }}>
+              <div><h3 style={{ margin: 0, fontSize: '2rem', color: '#10b981' }}>99.9%</h3><p style={{ color: '#94a3b8' }}>Live Reliability</p></div>
+              <div><h3 style={{ margin: 0, fontSize: '2rem', color: '#f59e0b' }}>SHA-256</h3><p style={{ color: '#94a3b8' }}>Logic Encryption</p></div>
             </div>
           </div>
         </div>
 
-        {/* Form Section */}
+        {/* Form Side */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#ffffff' }}>
-          <div className="glass-card" style={{ width: '440px', padding: '50px', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)' }}>
+          <div className="glass-card" style={{ width: '450px', padding: '60px 50px', borderRadius: '24px', boxShadow: '0 30px 60px -12px rgba(0,0,0,0.12)', border: '1px solid #f1f5f9' }}>
             {!showSignup && (
-              <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '10px', padding: '8px', marginBottom: '35px' }}>
-                <button type="button" onClick={() => setLoginType('admin')} style={{ flex: 1, padding: '12px', border: 'none', background: loginType === 'admin' ? 'white' : 'transparent', borderRadius: '8px', fontWeight: 700, boxShadow: loginType === 'admin' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none' }}>Admin</button>
-                <button type="button" onClick={() => setLoginType('manager')} style={{ flex: 1, padding: '12px', border: 'none', background: loginType === 'manager' ? 'white' : 'transparent', borderRadius: '8px', fontWeight: 700, boxShadow: loginType === 'manager' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none' }}>Manager</button>
-                <button type="button" onClick={() => setLoginType('staff')} style={{ flex: 1, padding: '12px', border: 'none', background: loginType === 'staff' ? 'white' : 'transparent', borderRadius: '8px', fontWeight: 700, boxShadow: loginType === 'staff' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none' }}>Staff</button>
+              <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '12px', padding: '6px', marginBottom: '35px' }}>
+                {['admin', 'manager', 'staff'].map((type) => (
+                  <button key={type} type="button" onClick={() => setLoginType(type)} style={{ flex: 1, padding: '12px', border: 'none', background: loginType === type ? 'white' : 'transparent', borderRadius: '8px', fontWeight: 700, color: loginType === type ? '#4f46e5' : '#64748b', cursor: 'pointer', boxShadow: loginType === type ? '0 4px 6px rgba(0,0,0,0.05)' : 'none', textTransform: 'capitalize' }}>{type}</button>
+                ))}
               </div>
             )}
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '10px' }}>{showSignup ? "Account Setup" : `${loginType.toUpperCase()} Access`}</h2>
-            <p style={{ color: '#64748b', marginBottom: '30px' }}>Identify yourself to join the cloud network.</p>
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <div style={{ width: '60px', height: '60px', background: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <i className={`fas ${showSignup ? 'fa-user-plus' : 'fa-shield-halved'}`} style={{ fontSize: '1.5rem', color: '#4f46e5' }}></i>
+              </div>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>{showSignup ? "Create System Account" : `Portal Access: ${loginType.toUpperCase()}`}</h2>
+              <p style={{ color: '#64748b', marginTop: '8px' }}>Security verification required to initiate session.</p>
+            </div>
             
-            <form onSubmit={handleAuthSubmit} className="pro-form" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <input className="pro-input" name="username" placeholder="Username / User ID" onChange={handleAuthChange} required style={{ height: '48px' }} />
-              <input className="pro-input" name="password" type="password" placeholder="Secure Password" onChange={handleAuthChange} required style={{ height: '48px' }} />
-              <button type="submit" className="btn-primary-pro" style={{ height: '52px', marginTop: '10px', background: showSignup ? '#4f46e5' : (loginType === 'admin' ? '#4f46e5' : loginType === 'manager' ? '#10b981' : '#f59e0b') }}>
-                {showSignup ? "Register System" : "Verify Authenticity"}
+            <form onSubmit={handleAuthSubmit} className="pro-form" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ position: 'relative' }}>
+                <i className="fas fa-user" style={{ position: 'absolute', left: '15px', top: '16px', color: '#94a3b8' }}></i>
+                <input className="pro-input" name="username" placeholder="Unique Identity / ID" onChange={handleAuthChange} required style={{ height: '50px', paddingLeft: '45px' }} />
+              </div>
+              <div style={{ position: 'relative' }}>
+                <i className="fas fa-lock" style={{ position: 'absolute', left: '15px', top: '16px', color: '#94a3b8' }}></i>
+                <input className="pro-input" name="password" type="password" placeholder="Passphrase" onChange={handleAuthChange} required style={{ height: '50px', paddingLeft: '45px' }} />
+              </div>
+              <button type="submit" className="btn-primary-pro" style={{ height: '54px', marginTop: '10px', fontSize: '1.1rem', fontWeight: 700, background: showSignup ? '#4f46e5' : (loginType === 'admin' ? '#4f46e5' : loginType === 'manager' ? '#10b981' : '#f59e0b') }}>
+                {showSignup ? "Commit Registration" : "Authenticate Session"} <i className="fas fa-arrow-right-long" style={{ marginLeft: '10px' }}></i>
               </button>
             </form>
             
-            <button onClick={() => setShowSignup(!showSignup)} style={{ marginTop: '30px', background: 'none', border: 'none', color: '#4f46e5', fontWeight: 800, cursor: 'pointer', fontSize: '0.9rem' }}>
-              {showSignup ? "← Back to Login Portal" : "New User? Apply for Access"}
+            <button onClick={() => setShowSignup(!showSignup)} style={{ marginTop: '35px', background: 'none', border: 'none', color: '#4f46e5', fontWeight: 800, cursor: 'pointer', fontSize: '0.95rem', width: '100%', textAlign: 'center' }}>
+              {showSignup ? "← Revert to Authentication Gate" : "New User? Apply for Access Privileges"}
             </button>
           </div>
         </div>
@@ -384,263 +444,295 @@ function App() {
   }
 
   // ===================================================
-  // 9. CORE DASHBOARD RENDER
+  // 9. CORE DASHBOARD RENDER (ENTERPRISE LAYOUT)
   // ===================================================
+  
+  const isAdmin = userRole === 'admin';
+  const canExport = userRole === 'admin' || userRole === 'manager';
+
   return (
-    <div className="main-layout">
-      {/* GLOBAL SIDEBAR */}
-      <div className="sidebar">
-        <h2 style={{ padding: '0 15px', marginBottom: '30px' }}><i className="fas fa-layer-group"></i> INV-PRO</h2>
+    <div className="main-layout" style={{ background: '#f8fafc' }}>
+      
+      {/* GLOBAL SIDEBAR NAVIGATION */}
+      <div className="sidebar" style={{ background: '#0f172a', boxShadow: '10px 0 30px rgba(0,0,0,0.05)' }}>
+        <div style={{ padding: '30px 25px', marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '1.5rem', letterSpacing: '-1px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '35px', height: '35px', background: '#4f46e5', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-cube" style={{ fontSize: '1rem' }}></i>
+            </div>
+            INV-PRO ERP
+          </h2>
+        </div>
         
-        <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#64748b', marginBottom: '10px', paddingLeft: '20px' }}>Navigation</div>
-        <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><i className="fas fa-chart-pie"></i> Intelligence</div>
-        <div className={`nav-item ${activeTab === 'sales' ? 'active' : ''}`} onClick={() => setActiveTab('sales')}><i className="fas fa-cash-register"></i> POS Terminal</div>
+        <div style={{ padding: '0 15px' }}>
+          <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '2px', color: '#475569', marginBottom: '15px', paddingLeft: '15px', fontWeight: 800 }}>Core Modules</div>
+          <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><i className="fas fa-chart-pie"></i> Intelligence Dashboard</div>
+          <div className={`nav-item ${activeTab === 'sales' ? 'active' : ''}`} onClick={() => setActiveTab('sales')}><i className="fas fa-cash-register"></i> POS Terminal Hub</div>
+          
+          {/* 🔥 DYNAMIC ANALYTICS ENTRY 🔥 */}
+          {canExport && (
+            <div className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
+              <i className="fas fa-chart-line"></i> Advanced Analytics
+            </div>
+          )}
+          
+          <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '2px', color: '#475569', marginBottom: '15px', marginTop: '35px', paddingLeft: '15px', fontWeight: 800 }}>Security & Audit</div>
+          {isAdmin && <div className={`nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}><i className="fas fa-user-shield"></i> Network Identities</div>}
+          {canExport && <div className={`nav-item ${activeTab === 'ledger' ? 'active' : ''}`} onClick={() => setActiveTab('ledger')}><i className="fas fa-book-bookmark"></i> Audit Stock Ledger</div>}
+        </div>
         
-        {/* 🔥 DYNAMIC ANALYTICS ENTRY 🔥 */}
-        {canExport && (
-          <div className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
-            <i className="fas fa-chart-line"></i> Business Analytics
-          </div>
-        )}
-        
-        <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#64748b', marginBottom: '10px', marginTop: '30px', paddingLeft: '20px' }}>Administration</div>
-        {isAdmin && <div className={`nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}><i className="fas fa-users-cog"></i> Manage Users</div>}
-        {canExport && <div className={`nav-item ${activeTab === 'ledger' ? 'active' : ''}`} onClick={() => setActiveTab('ledger')}><i className="fas fa-book"></i> Stock Ledger</div>}
-        
-        <div className="nav-item" style={{ marginTop: 'auto', color: '#ef4444' }} onClick={handleLogout}><i className="fas fa-sign-out-alt"></i> Terminate Session</div>
+        <div className="nav-item" style={{ marginTop: 'auto', color: '#ef4444', borderTop: '1px solid #1e293b', paddingTop: '20px', margin: 'auto 15px 30px' }} onClick={handleLogout}>
+          <i className="fas fa-power-off"></i> Terminate Session
+        </div>
       </div>
 
-      <div className="content-area">
-        {/* CONTEXTUAL HEADER */}
-        <div className="header-pro">
+      <div className="content-area" style={{ padding: '40px' }}>
+        
+        {/* GLOBAL CONTEXTUAL HEADER */}
+        <div className="header-pro" style={{ marginBottom: '40px' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.8rem' }}>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Control</h1>
-            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>System Status: Operational</p>
+            <h1 style={{ margin: 0, fontSize: '2.2rem', fontWeight: 800, color: '#0f172a' }}>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Control</h1>
+            <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: '0.95rem' }}>Node Status: <span style={{ color: '#10b981', fontWeight: 700 }}>● Operational</span> | Latency: 14ms</p>
           </div>
-          <div className="user-profile-badge">
+          <div className="user-profile-badge" style={{ padding: '8px 20px', background: 'white', borderRadius: '15px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 800, color: '#0f172a' }}>{currentUser}</div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>{userRole.toUpperCase()} PRIVILEGES</div>
+              <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>{currentUser}</div>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>{userRole} SECURITY</div>
             </div>
-            <div className="avatar" style={{ background: userRole === 'admin' ? '#4f46e5' : '#10b981' }}>{currentUser.charAt(0).toUpperCase()}</div>
+            <div className="avatar" style={{ width: '42px', height: '42px', background: userRole === 'admin' ? 'linear-gradient(135deg, #4f46e5, #312e81)' : 'linear-gradient(135deg, #10b981, #065f46)', fontSize: '1.1rem' }}>{currentUser.charAt(0).toUpperCase()}</div>
           </div>
         </div>
 
-        {/* ===================================================
-            TAB VIEW: DASHBOARD (INVENTORY HUB)
-        =================================================== */}
+        {/* --- TABS RENDERING GATEWAY --- */}
+        
+        {/* TAB: DASHBOARD (INVENTORY CENTER) */}
         {activeTab === 'dashboard' && (
-          <>
-            <div className="stats-grid">
-              <div className="stat-card-pro"><h3>Total SKUs</h3><p>{products.length}</p></div>
-              <div className="stat-card-pro green-line"><h3>Inventory Value</h3><p>₹{products.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</p></div>
-              <div className="stat-card-pro purple-line"><h3>Live Transactions</h3><p>{sales.length}</p></div>
+          <div className="fade-in">
+            <div className="stats-grid" style={{ marginBottom: '35px' }}>
+              <div className="stat-card-pro"><h3>Live SKU Count</h3><p>{products.length}</p><div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '10px' }}>Catalog Capacity: 94%</div></div>
+              <div className="stat-card-pro green-line"><h3>Total Assets Value</h3><p>₹{products.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</p><div style={{ fontSize: '0.7rem', color: '#10b981', marginTop: '10px' }}>↑ 4.2% from yesterday</div></div>
+              <div className="stat-card-pro purple-line"><h3>Daily Throughput</h3><p>{sales.length}</p><div style={{ fontSize: '0.7rem', color: '#8b5cf6', marginTop: '10px' }}>Average processing: 2m</div></div>
             </div>
 
-            <div className="dashboard-grid">
-              <div className="pro-table-card">
-                <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9' }}>
-                  <div style={{ position: 'relative' }}>
-                    <i className="fas fa-search" style={{ position: 'absolute', left: '15px', top: '15px', color: '#94a3b8' }}></i>
-                    <input className="pro-input" placeholder="Query Product Name, Category or SKU Code..." style={{ width: '400px', paddingLeft: '40px' }} value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} />
+            <div className="dashboard-grid" style={{ gap: '30px' }}>
+              <div className="pro-table-card" style={{ flex: 1.5 }}>
+                <div style={{ padding: '25px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', width: '450px' }}>
+                    <i className="fas fa-search" style={{ position: 'absolute', left: '18px', top: '16px', color: '#94a3b8' }}></i>
+                    <input className="pro-input" placeholder="Query Matrix: Name, SKU, Category..." style={{ paddingLeft: '45px', background: '#f8fafc', border: '1px solid #e2e8f0' }} value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} />
                   </div>
+                  <div style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Showing {products.length} entities</div>
                 </div>
-                <table className="pro-table">
-                  <thead><tr><th>Item Identity</th><th>SKU Code</th><th>Category</th><th>Stock Status</th><th>Unit Price</th>{isAdmin && <th>Actions</th>}</tr></thead>
-                  <tbody>
-                    {products.filter(p=>p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
-                      <tr key={p.id}>
-                        <td style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          {/* 🔥 SMART IMAGE ROUTING LOGIC 🔥 */}
-                          {p.image_url ? (
-                            <img src={p.image_url.startsWith('http') ? p.image_url : `https://inv-pro-erp.onrender.com${p.image_url}`} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #e2e8f0' }} alt="img" />
-                          ) : <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fas fa-box" style={{ color: '#cbd5e1' }}></i></div>}
-                          <span style={{ fontWeight: 700, color: '#0f172a' }}>{p.name}</span>
-                        </td>
-                        <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{p.sku}</td>
-                        <td><span style={{ background: '#f8fafc', padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}>{p.category}</span></td>
-                        <td><span className={`status-badge ${p.quantity < 20 ? 'status-low' : 'status-good'}`}>{p.quantity} Units</span></td>
-                        <td style={{ fontWeight: 800 }}>₹{p.price}</td>
-                        {isAdmin && (
-                          <td>
-                            <button onClick={()=> { setFormData({...p, image: null}); setEditingId(p.id); }} style={{ color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}><i className="fas fa-edit"></i></button>
-                            <button onClick={()=> handleDelete(p.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '12px', fontSize: '1rem' }}><i className="fas fa-trash"></i></button>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="pro-table">
+                    <thead><tr><th>ENTITY IDENTITY</th><th>SKU REFERENCE</th><th>SEGMENT</th><th>AVAILABILITY</th><th>VALUATION</th>{isAdmin && <th style={{ textAlign: 'right' }}>ACTIONS</th>}</tr></thead>
+                    <tbody>
+                      {products.filter(p=>p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
+                        <tr key={p.id}>
+                          <td style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px 20px' }}>
+                            {/* 🔥 PREMIUM SMART IMAGE LOGIC 🔥 */}
+                            {p.image_url ? (
+                              <img src={p.image_url.startsWith('http') ? p.image_url : `https://inv-pro-erp.onrender.com${p.image_url}`} style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'cover', border: '2px solid #f1f5f9' }} alt="img" />
+                            ) : <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #cbd5e1' }}><i className="fas fa-box" style={{ color: '#cbd5e1', fontSize: '1rem' }}></i></div>}
+                            <div>
+                              <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem' }}>{p.name}</div>
+                              <small style={{ color: '#94a3b8', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>{p.category}</small>
+                            </div>
                           </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <td style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#64748b' }}>{p.sku}</td>
+                          <td><span style={{ background: '#eff6ff', color: '#3b82f6', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800 }}>{p.category}</span></td>
+                          <td><span className={`status-badge ${p.quantity < 20 ? 'status-low' : 'status-good'}`} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>{p.quantity} Units</span></td>
+                          <td style={{ fontWeight: 900, color: '#0f172a', fontSize: '1rem' }}>₹{p.price.toLocaleString()}</td>
+                          {isAdmin && (
+                            <td style={{ textAlign: 'right' }}>
+                              <button onClick={()=> { setFormData({...p, image: null}); setEditingId(p.id); }} style={{ color: '#4f46e5', background: '#eef2ff', border: 'none', width: '35px', height: '35px', borderRadius: '8px', cursor: 'pointer', transition: '0.2s' }}><i className="fas fa-pen-to-square"></i></button>
+                              <button onClick={()=> handleDelete(p.id)} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', width: '35px', height: '35px', borderRadius: '8px', cursor: 'pointer', marginLeft: '10px', transition: '0.2s' }}><i className="fas fa-trash-can"></i></button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {isAdmin && (
-                <div className="glass-card" style={{ height: 'fit-content', border: '1px solid #e2e8f0' }}>
-                  <h3 style={{ margin: '0 0 20px', fontSize: '1.2rem' }}>{editingId ? 'Modify Catalog Record' : 'Add New Inventory'}</h3>
-                  <form className="pro-form" onSubmit={handleSubmit}>
-                    <input className="pro-input" placeholder="Full Product Name" value={formData.name} onChange={(e)=>setFormData({...formData, name: e.target.value})} required />
-                    <input className="pro-input" placeholder="Unique SKU / Barcode" value={formData.sku} onChange={(e)=>setFormData({...formData, sku: e.target.value})} required />
-                    <input className="pro-input" placeholder="Broad Category" value={formData.category} onChange={(e)=>setFormData({...formData, category: e.target.value})} required />
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <input className="pro-input" type="number" placeholder="Stock Qty" value={formData.quantity} onChange={(e)=>setFormData({...formData, quantity: e.target.value})} required style={{ flex: 1 }} />
-                      <input className="pro-input" type="number" placeholder="Retail Price" value={formData.price} onChange={(e)=>setFormData({...formData, price: e.target.value})} required style={{ flex: 1 }} />
+                <div className="glass-card" style={{ flex: 0.6, height: 'fit-content', padding: '35px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ marginBottom: '25px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>{editingId ? 'Modify Inventory Node' : 'Initialize New Entry'}</h3>
+                    <p style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '5px' }}>Metadata will be synchronized across the cluster.</p>
+                  </div>
+                  <form className="pro-form" onSubmit={handleSubmit} style={{ gap: '18px' }}>
+                    <input className="pro-input" placeholder="Display Entity Name" value={formData.name} onChange={(e)=>setFormData({...formData, name: e.target.value})} required style={{ height: '48px' }} />
+                    <input className="pro-input" placeholder="Unique SKU String" value={formData.sku} onChange={(e)=>setFormData({...formData, sku: e.target.value})} required style={{ height: '48px' }} />
+                    <input className="pro-input" placeholder="Market Segment / Category" value={formData.category} onChange={(e)=>setFormData({...formData, category: e.target.value})} required style={{ height: '48px' }} />
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <small style={{ color: '#94a3b8', fontWeight: 700, fontSize: '0.65rem' }}>VOLUME</small>
+                        <input className="pro-input" type="number" placeholder="Qty" value={formData.quantity} onChange={(e)=>setFormData({...formData, quantity: e.target.value})} required style={{ height: '48px' }} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <small style={{ color: '#94a3b8', fontWeight: 700, fontSize: '0.65rem' }}>UNIT COST (₹)</small>
+                        <input className="pro-input" type="number" placeholder="Price" value={formData.price} onChange={(e)=>setFormData({...formData, price: e.target.value})} required style={{ height: '48px' }} />
+                      </div>
                     </div>
-                    <div style={{ border: '1px dashed #cbd5e1', padding: '15px', borderRadius: '10px', textAlign: 'center' }}>
-                      <label style={{ fontSize: '0.8rem', color: '#64748b', cursor: 'pointer' }}>
-                        <i className="fas fa-cloud-upload-alt" style={{ display: 'block', fontSize: '1.5rem', marginBottom: '5px' }}></i>
-                        {formData.image ? formData.image.name : "Attach Product Photograph"}
+                    <div style={{ border: '2px dashed #e2e8f0', padding: '25px', borderRadius: '15px', textAlign: 'center', background: '#f8fafc', transition: '0.3s' }} onMouseOver={(e)=>e.currentTarget.style.borderColor='#4f46e5'}>
+                      <label style={{ fontSize: '0.9rem', color: '#4f46e5', cursor: 'pointer', fontWeight: 700 }}>
+                        <i className="fas fa-file-arrow-up" style={{ display: 'block', fontSize: '1.8rem', marginBottom: '10px' }}></i>
+                        {formData.image ? formData.image.name : "Sync Product Photograph"}
                         <input type="file" id="imageInput" onChange={(e)=>setFormData({...formData, image: e.target.files[0]})} style={{ display: 'none' }} />
                       </label>
                     </div>
-                    <button className="btn-primary-pro" style={{ height: '48px' }}>{editingId ? 'Confirm Modifications' : 'Commit New Product'}</button>
-                    {editingId && <button type="button" onClick={resetForm} style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: 700, marginTop: '10px' }}>Abort Update</button>}
+                    <button className="btn-primary-pro" style={{ height: '54px', fontSize: '1rem' }}>{editingId ? 'Authorize Update' : 'Initialize SKU'}</button>
+                    {editingId && <button type="button" onClick={resetForm} style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer' }}>Abort Transaction</button>}
                   </form>
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
 
-        {/* ===================================================
-            TAB VIEW: SALES (POS SMART TERMINAL)
-        =================================================== */}
+        {/* TAB: SMART POS TERMINAL (HYPER-LOCAL) */}
         {activeTab === 'sales' && (
-          <div style={{ display: 'flex', gap: '20px', height: '82vh' }}>
-            {/* Catalog Section */}
+          <div className="fade-in" style={{ display: 'flex', gap: '30px', height: '82vh' }}>
             <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div className="glass-card" style={{ display: 'flex', gap: '20px', alignItems: 'center', border: '2px solid #e2e8f0' }}>
-                <div style={{ padding: '12px', background: '#e0e7ff', borderRadius: '10px' }}>
-                  <i className="fas fa-barcode" style={{ fontSize: '1.8rem', color: '#4f46e5' }}></i>
+              <div className="glass-card" style={{ display: 'flex', gap: '25px', alignItems: 'center', border: '2px solid #e0e7ff', padding: '15px 30px' }}>
+                <div style={{ width: '55px', height: '55px', background: '#4f46e5', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="fas fa-barcode-read" style={{ fontSize: '2rem', color: 'white' }}></i>
                 </div>
                 <form onSubmit={handleBarcodeSubmit} style={{ flex: 1 }}>
-                  <input className="pro-input" placeholder="Hardware Scan Active... (Or manual SKU search)" value={barcodeInput} onChange={(e)=>setBarcodeInput(e.target.value)} autoFocus style={{ height: '54px', fontSize: '1.1rem', border: 'none', padding: 0 }} />
+                  <input className="pro-input" placeholder="Hardware Scan Input Ready... (Listening for Barcode/SKU)" value={barcodeInput} onChange={(e)=>setBarcodeInput(e.target.value)} autoFocus style={{ height: '60px', fontSize: '1.3rem', border: 'none', padding: 0, fontWeight: 700 }} />
                 </form>
+                <div style={{ color: '#94a3b8', fontSize: '0.8rem', textAlign: 'right' }}>LASER SCANNER<br/>ACTIVE ●</div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '15px', overflowY: 'auto', paddingRight: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '20px', overflowY: 'auto', paddingRight: '10px' }}>
                 {products.filter(p=>p.quantity > 0).map(p => (
-                  <div key={p.id} className="glass-card" onClick={()=>addToCart(p)} style={{ cursor: 'pointer', textAlign: 'center', transition: 'transform 0.2s', border: '1px solid #f1f5f9' }} onMouseOver={(e)=>e.currentTarget.style.transform='scale(1.03)'} onMouseOut={(e)=>e.currentTarget.style.transform='scale(1)'}>
+                  <div key={p.id} className="glass-card" onClick={()=>addToCart(p)} style={{ cursor: 'pointer', textAlign: 'center', padding: '20px', transition: 'all 0.3s', border: '1px solid #f1f5f9' }} onMouseOver={(e)=> { e.currentTarget.style.transform='translateY(-8px)'; e.currentTarget.style.boxShadow='0 20px 25px -5px rgba(0,0,0,0.1)'; }} onMouseOut={(e)=> { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='none'; }}>
                     {p.image_url ? (
-                      <img src={p.image_url.startsWith('http') ? p.image_url : `https://inv-pro-erp.onrender.com${p.image_url}`} style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', marginBottom: '10px' }} alt="" />
-                    ) : <div style={{ height: '80px', width: '80px', background: '#f8fafc', margin: '0 auto 10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fas fa-box" style={{ fontSize: '1.5rem', color: '#cbd5e1' }}></i></div>}
-                    <h4 style={{ margin: '5px 0', fontSize: '0.95rem' }}>{p.name}</h4>
-                    <p style={{ fontWeight: 900, color: '#10b981', fontSize: '1.1rem', margin: '5px 0' }}>₹{p.price}</p>
-                    <div style={{ background: '#f1f5f9', display: 'inline-block', padding: '2px 8px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700 }}>Stock: {p.quantity}</div>
+                      <img src={p.image_url.startsWith('http') ? p.image_url : `https://inv-pro-erp.onrender.com${p.image_url}`} style={{ width: '100px', height: '100px', borderRadius: '15px', objectFit: 'cover', marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }} alt="" />
+                    ) : <div style={{ height: '100px', width: '100px', background: '#f8fafc', margin: '0 auto 15px', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fas fa-box-open" style={{ fontSize: '2rem', color: '#cbd5e1' }}></i></div>}
+                    <h4 style={{ margin: '5px 0', fontSize: '1rem', color: '#0f172a' }}>{p.name}</h4>
+                    <p style={{ fontWeight: 900, color: '#10b981', fontSize: '1.3rem', margin: '8px 0' }}>₹{p.price.toLocaleString()}</p>
+                    <div style={{ background: p.quantity < 10 ? '#fef2f2' : '#f1f5f9', color: p.quantity < 10 ? '#ef4444' : '#64748b', display: 'inline-block', padding: '4px 12px', borderRadius: '30px', fontSize: '0.75rem', fontWeight: 800 }}>Stock: {p.quantity}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Billing Cart Section */}
-            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', border: '2px solid #f1f5f9', padding: 0 }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', borderRadius: '16px 16px 0 0' }}>
-                <h3 style={{ margin: 0 }}><i className="fas fa-shopping-basket" style={{ color: '#4f46e5', marginRight: '10px' }}></i> Active Checkout</h3>
+            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', border: '2px solid #f1f5f9', padding: 0, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.08)' }}>
+              <div style={{ padding: '25px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', borderRadius: '24px 24px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem' }}><i className="fas fa-cart-shopping" style={{ color: '#4f46e5', marginRight: '12px' }}></i> Active Queue</h3>
+                <span style={{ background: '#4f46e5', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 }}>{cart.length} ITEMS</span>
               </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
                 {cart.length === 0 ? (
-                  <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                    <i className="fas fa-cart-arrow-down" style={{ fontSize: '3rem', marginBottom: '15px' }}></i>
-                    <p>Terminal empty.</p>
+                  <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center' }}>
+                    <i className="fas fa-cash-register" style={{ fontSize: '4rem', marginBottom: '20px', color: '#e2e8f0' }}></i>
+                    <p style={{ fontWeight: 600 }}>Terminal idle. <br/>Scan entities to initiate billing.</p>
                   </div>
                 ) : (
                   cart.map(item => (
-                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid #f8fafc' }}>
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '18px 0', borderBottom: '1px solid #f8fafc' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{item.name}</div>
-                        <small style={{ color: '#10b981', fontWeight: 700 }}>₹{item.price} per unit</small>
+                        <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>{item.name}</div>
+                        <small style={{ color: '#10b981', fontWeight: 800, fontSize: '0.8rem' }}>₹{item.price} per node</small>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <button onClick={()=>updateCartQty(item.id, -1)} style={{ width: '28px', height: '28px', background: '#fee2e2', border: 'none', borderRadius: '6px', color: '#ef4444', fontWeight: 900 }}>-</button>
-                        <span style={{ fontWeight: 800 }}>{item.cartQty}</span>
-                        <button onClick={()=>updateCartQty(item.id, 1)} style={{ width: '28px', height: '28px', background: '#dcfce7', border: 'none', borderRadius: '6px', color: '#10b981', fontWeight: 900 }}>+</button>
-                        <div style={{ width: '70px', textAlign: 'right', fontWeight: 900 }}>₹{item.price * item.cartQty}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: '10px', padding: '4px' }}>
+                          <button onClick={()=>updateCartQty(item.id, -1)} style={{ width: '32px', height: '32px', background: 'white', border: 'none', borderRadius: '8px', color: '#ef4444', fontWeight: 900, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>-</button>
+                          <span style={{ fontWeight: 900, padding: '0 15px', color: '#0f172a' }}>{item.cartQty}</span>
+                          <button onClick={()=>updateCartQty(item.id, 1)} style={{ width: '32px', height: '32px', background: 'white', border: 'none', borderRadius: '8px', color: '#10b981', fontWeight: 900, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>+</button>
+                        </div>
+                        <div style={{ width: '85px', textAlign: 'right', fontWeight: 900, fontSize: '1.1rem', color: '#0f172a' }}>₹{(item.price * item.cartQty).toLocaleString()}</div>
                       </div>
                     </div>
                   ))
                 )}
               </div>
-              <div style={{ padding: '25px', borderTop: '2px dashed #cbd5e1', background: '#f8fafc' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
-                  <span>Tax (CGST/SGST 18%):</span>
-                  <span>Included</span>
+              <div style={{ padding: '30px', borderTop: '2px dashed #cbd5e1', background: '#f8fafc' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.95rem', color: '#64748b', fontWeight: 600 }}>
+                  <span>Consolidated Tax (18%):</span>
+                  <span style={{ color: '#0f172a' }}>Inclusive</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.4rem', fontWeight: 900 }}>
-                  <span>Grand Total:</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', marginTop: '5px' }}>
+                  <span>Grand Total</span>
                   <span style={{ color: '#10b981' }}>₹{cart.reduce((s,i)=>s+(i.price*i.cartQty),0).toLocaleString()}</span>
                 </div>
-                <button onClick={processBulkCheckout} disabled={isCheckingOut || cart.length === 0} className="btn-primary-pro" style={{ marginTop: '20px', height: '56px', fontSize: '1.1rem' }}>
-                  {isCheckingOut ? <><i className="fas fa-sync fa-spin"></i> Processing Transaction...</> : <><i className="fas fa-receipt"></i> Generate Fiscal Invoice</>}
+                <button onClick={processBulkCheckout} disabled={isCheckingOut || cart.length === 0} className="btn-primary-pro" style={{ marginTop: '30px', height: '65px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', borderRadius: '18px' }}>
+                  {isCheckingOut ? <><i className="fas fa-circle-notch fa-spin"></i> Finalizing Sync...</> : <><i className="fas fa-receipt"></i> Generate Fiscal Invoice</>}
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ===================================================
-            TAB VIEW: ANALYTICS (BUSINESS INTELLIGENCE) 🔥
-        =================================================== */}
+        {/* TAB: BUSINESS ANALYTICS (BI HUB) 🔥 */}
         {activeTab === 'analytics' && canExport && (
-          <div className="analytics-view" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+          <div className="analytics-view fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
             <div className="stats-grid">
               <div className="stat-card-pro green-line">
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <h3>Revenue Performance</h3>
-                  <i className="fas fa-arrow-trend-up" style={{ color: '#10b981' }}></i>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: '0.85rem' }}>REVENUE PERFORMANCE</h3>
+                  <i className="fas fa-chart-line-up" style={{ color: '#10b981' }}></i>
                 </div>
                 <p>₹{analyticsData.salesTrend.reduce((a, b) => a + parseFloat(b.daily_revenue), 0).toLocaleString()}</p>
-                <small>Consolidated 7-day revenue stream</small>
+                <small style={{ fontWeight: 700, color: '#94a3b8' }}>AGGREGATED 7-DAY REVENUE VELOCITY</small>
               </div>
               <div className="stat-card-pro purple-line">
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <h3>Catalog Distribution</h3>
-                  <i className="fas fa-pie-chart" style={{ color: '#8b5cf6' }}></i>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: '0.85rem' }}>MARKET SHARE</h3>
+                  <i className="fas fa-diagram-project" style={{ color: '#8b5cf6' }}></i>
                 </div>
-                <p>{analyticsData.categorySales.length} Active Segments</p>
-                <small>Global categorical footprint</small>
+                <p>{analyticsData.categorySales.length} Active Hubs</p>
+                <small style={{ fontWeight: 700, color: '#94a3b8' }}>DIVERSIFICATION FACTOR: OPTIMAL</small>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '25px' }}>
-              <div className="glass-card" style={{ height: '420px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ marginBottom: '20px' }}><i className="fas fa-chart-line" style={{ marginRight: '10px', color: '#4f46e5' }}></i> Sales Progression Matrix</h3>
-                <div style={{ height: '330px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '35px' }}>
+              <div className="glass-card" style={{ height: '450px', border: '1px solid #e2e8f0', padding: '30px' }}>
+                <h3 style={{ marginBottom: '25px', fontSize: '1.1rem', fontWeight: 800 }}><i className="fas fa-wave-pulse" style={{ marginRight: '12px', color: '#4f46e5' }}></i> Sales Progression Matrix (Trend Analysis)</h3>
+                <div style={{ height: '340px' }}>
                   <Line 
                     data={{
                       labels: analyticsData.salesTrend.map(d => new Date(d.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })),
                       datasets: [{
-                        label: 'Gross Daily Revenue (₹)',
+                        label: 'Gross Daily Yield (₹)',
                         data: analyticsData.salesTrend.map(d => d.daily_revenue),
                         borderColor: '#4f46e5',
                         backgroundColor: 'rgba(79, 70, 229, 0.1)',
                         fill: true,
-                        tension: 0.4,
-                        pointRadius: 6,
+                        tension: 0.45,
+                        pointRadius: 7,
                         pointBackgroundColor: '#fff',
-                        pointBorderWidth: 3
+                        pointBorderColor: '#4f46e5',
+                        pointBorderWidth: 4
                       }]
                     }}
                     options={{ 
                       maintainAspectRatio: false,
-                      plugins: { legend: { display: false } },
-                      scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+                      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f172a', padding: 15, titleFont: { size: 14 } } },
+                      scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { weight: 700 } } }, x: { grid: { display: false }, ticks: { font: { weight: 700 } } } }
                     }}
                   />
                 </div>
               </div>
-              <div className="glass-card" style={{ height: '420px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ marginBottom: '20px' }}><i className="fas fa-chart-pie" style={{ marginRight: '10px', color: '#8b5cf6' }}></i> Revenue Market Share</h3>
-                <div style={{ height: '330px' }}>
+              <div className="glass-card" style={{ height: '450px', border: '1px solid #e2e8f0', padding: '30px' }}>
+                <h3 style={{ marginBottom: '25px', fontSize: '1.1rem', fontWeight: 800 }}><i className="fas fa-chart-pie" style={{ marginRight: '12px', color: '#8b5cf6' }}></i> Revenue Market Share</h3>
+                <div style={{ height: '340px' }}>
                   <Doughnut 
                     data={{
                       labels: analyticsData.categorySales.map(c => c.category),
                       datasets: [{
                         data: analyticsData.categorySales.map(c => c.revenue),
                         backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
-                        borderWidth: 0
+                        borderWidth: 0,
+                        hoverOffset: 20
                       }]
                     }}
                     options={{ 
                       maintainAspectRatio: false, 
-                      cutout: '75%',
-                      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } }
+                      cutout: '78%',
+                      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 25, font: { size: 11, weight: 700 } } } }
                     }}
                   />
                 </div>
@@ -648,19 +740,19 @@ function App() {
             </div>
 
             <div className="pro-table-card">
-              <div style={{ padding: '25px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0 }}><i className="fas fa-crown" style={{ color: '#f59e0b', marginRight: '10px' }}></i> Top Performing Inventory (SKU Rank)</h3>
-                <button className="btn-primary-pro" style={{ width: 'auto', padding: '8px 20px', fontSize: '0.8rem' }} onClick={()=>window.print()}>Download BI Report</button>
+              <div style={{ padding: '30px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem' }}><i className="fas fa-trophy" style={{ color: '#f59e0b', marginRight: '12px' }}></i> High-Performance SKU Leaderboard</h3>
+                <button className="btn-primary-pro" style={{ width: 'auto', padding: '10px 25px', fontSize: '0.85rem', background: '#0f172a' }} onClick={()=>window.print()}><i className="fas fa-file-export" style={{ marginRight: '8px' }}></i> EXPORT BI REPORT</button>
               </div>
               <table className="pro-table">
-                <thead><tr><th>Product Identifier</th><th>Velocity (Units Sold)</th><th>Total Capital Contribution</th><th>Rank</th></tr></thead>
+                <thead><tr><th style={{ paddingLeft: '30px' }}>PRODUCT IDENTITY</th><th>VELOCITY (UNITS SOLD)</th><th>CAPITAL CONTRIBUTION</th><th>RANK</th></tr></thead>
                 <tbody>
                   {analyticsData.topProducts.map((p, idx) => (
                     <tr key={idx}>
-                      <td style={{ fontWeight: 800, color: '#0f172a' }}>{p.name}</td>
-                      <td><span className="status-badge status-good" style={{ padding: '6px 15px' }}>{p.total_sold} units</span></td>
-                      <td style={{ fontWeight: 900, color: '#10b981' }}>₹{parseFloat(p.total_revenue).toLocaleString()}</td>
-                      <td><div style={{ width: '30px', height: '30px', borderRadius: '50%', background: idx === 0 ? '#fef3c7' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: idx === 0 ? '#d97706' : '#64748b' }}>#{idx+1}</div></td>
+                      <td style={{ fontWeight: 800, color: '#0f172a', paddingLeft: '30px' }}>{p.name}</td>
+                      <td><span className="status-badge status-good" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>{p.total_sold} units</span></td>
+                      <td style={{ fontWeight: 900, color: '#10b981', fontSize: '1.1rem' }}>₹{parseFloat(p.total_revenue).toLocaleString()}</td>
+                      <td><div style={{ width: '35px', height: '35px', borderRadius: '50%', background: idx === 0 ? 'linear-gradient(135deg, #fef3c7, #fde68a)' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: idx === 0 ? '#d97706' : '#64748b', boxShadow: idx === 0 ? '0 4px 10px rgba(217, 119, 6, 0.2)' : 'none' }}>{idx+1}</div></td>
                     </tr>
                   ))}
                 </tbody>
@@ -669,56 +761,63 @@ function App() {
           </div>
         )}
 
-        {/* STOCK LEDGER TAB (AUDIT PASSBOOK) */}
+        {/* TAB: STOCK LEDGER (MASTER AUDIT PASSBOOK) */}
         {activeTab === 'ledger' && canExport && (
-          <div className="pro-table-card">
-            <div style={{ padding: '20px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-              <h3 style={{ margin: 0 }}><i className="fas fa-history" style={{ color: '#64748b', marginRight: '10px' }}></i> Master Transaction History</h3>
+          <div className="pro-table-card fade-in">
+            <div style={{ padding: '30px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}><i className="fas fa-clock-rotate-left" style={{ color: '#64748b', marginRight: '12px' }}></i> Immutable Transaction History</h3>
+              <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 700 }}><i className="fas fa-shield-check"></i> ENCRYPTED AUDIT LOG</div>
             </div>
-            <table className="pro-table">
-              <thead><tr><th>Audit Timestamp</th><th>Product Entity</th><th>Activity Type</th><th>Volume Delta</th><th>Final Balance</th><th>Audit Remarks</th></tr></thead>
-              <tbody>
-                {ledgerData.map(log => (
-                  <tr key={log.id}>
-                    <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(log.created_at).toLocaleString('en-IN')}</td>
-                    <td style={{ fontWeight: 800 }}>{log.product_name}</td>
-                    <td><span className="status-badge" style={{ background: '#f1f5f9', color: '#475569' }}>{log.transaction_type}</span></td>
-                    <td style={{ color: log.quantity_changed > 0 ? '#10b981' : '#ef4444', fontWeight: 900, fontSize: '1.1rem' }}>
-                      {log.quantity_changed > 0 ? `+${log.quantity_changed}` : log.quantity_changed}
-                    </td>
-                    <td style={{ fontWeight: 800, color: '#0f172a' }}>{log.running_balance}</td>
-                    <td style={{ fontSize: '0.85rem', fontStyle: 'italic', color: '#64748b' }}>{log.notes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="pro-table">
+                <thead><tr><th>AUDIT TIMESTAMP</th><th>PRODUCT ENTITY</th><th>ACTIVITY SIGNATURE</th><th>DELTA</th><th>RUNNING BALANCE</th><th>REMARKS</th></tr></thead>
+                <tbody>
+                  {ledgerData.map(log => (
+                    <tr key={log.id}>
+                      <td style={{ fontSize: '0.85rem', color: '#64748b', padding: '18px 20px' }}>{new Date(log.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                      <td style={{ fontWeight: 800, color: '#0f172a' }}>{log.product_name}</td>
+                      <td><span className="status-badge" style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', fontSize: '0.7rem' }}>{log.transaction_type}</span></td>
+                      <td style={{ color: log.quantity_changed > 0 ? '#10b981' : '#ef4444', fontWeight: 900, fontSize: '1.2rem' }}>
+                        {log.quantity_changed > 0 ? `+${log.quantity_changed}` : log.quantity_changed}
+                      </td>
+                      <td style={{ fontWeight: 900, color: '#0f172a', fontSize: '1.1rem' }}>{log.running_balance}</td>
+                      <td style={{ fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic' }}>{log.notes}</td>
+                    </tr>
+                  ))}
+                  {ledgerData.length === 0 && <tr><td colSpan="6" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>Initial records pending sync.</td></tr>}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        {/* USER SECURITY TAB */}
+        {/* TAB: USER ACCESS & IDENTITY MANAGEMENT */}
         {activeTab === 'users' && isAdmin && (
-          <div className="pro-table-card">
-            <div style={{ padding: '20px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-              <h3 style={{ margin: 0 }}><i className="fas fa-user-shield" style={{ color: '#4f46e5', marginRight: '10px' }}></i> System Access & RBAC Configuration</h3>
+          <div className="pro-table-card fade-in">
+            <div style={{ padding: '30px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}><i className="fas fa-user-lock" style={{ color: '#4f46e5', marginRight: '12px' }}></i> System RBAC Configuration</h3>
             </div>
             <table className="pro-table">
-              <thead><tr><th>Profile ID</th><th>Network Identity</th><th>Current Privilege</th><th>Permission Assignment</th></tr></thead>
+              <thead><tr><th>NETWORK ID</th><th>SECURE IDENTITY</th><th>ACCESS PRIVILEGE</th><th>AUTHORITY ASSIGNMENT</th></tr></thead>
               <tbody>
                 {usersList.map(user => (
                   <tr key={user.id}>
-                    <td style={{ color: '#94a3b8' }}>#{user.id.toString().padStart(4, '0')}</td>
-                    <td style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div className="avatar" style={{ width: '30px', height: '30px', fontSize: '0.8rem' }}>{user.username.charAt(0).toUpperCase()}</div>
-                      {user.username} {user.username === currentUser && <span style={{ fontSize: '0.6rem', background: '#dcfce7', color: '#10b981', padding: '2px 8px', borderRadius: '20px' }}>ACTIVE SESSION</span>}
+                    <td style={{ color: '#94a3b8', fontFamily: 'monospace', padding: '20px' }}>#UID-{user.id.toString().padStart(4, '0')}</td>
+                    <td style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <div className="avatar" style={{ width: '35px', height: '35px', fontSize: '0.9rem', background: '#e0e7ff', color: '#4f46e5' }}>{user.username.charAt(0).toUpperCase()}</div>
+                      <div>
+                        {user.username} 
+                        {user.username === currentUser && <span style={{ fontSize: '0.6rem', background: '#dcfce7', color: '#10b981', padding: '3px 10px', borderRadius: '30px', marginLeft: '10px', verticalAlign: 'middle' }}>SELF SESSION</span>}
+                      </div>
                     </td>
-                    <td><span className={`status-badge status-${user.role}`} style={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>{user.role}</span></td>
+                    <td><span className={`status-badge status-${user.role}`} style={{ textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px' }}>{user.role}</span></td>
                     <td>
-                      <select className="pro-input" value={user.role} style={{ width: '180px', height: '40px', fontSize: '0.85rem' }} onChange={(e)=> {
+                      <select className="pro-input" value={user.role} style={{ width: '220px', height: '45px', fontWeight: 700, cursor: user.username === currentUser ? 'not-allowed' : 'pointer' }} onChange={(e)=> {
                         axios.put(`${API_BASE}/users/${user.id}/role`, { role: e.target.value }).then(()=>fetchUsersList());
                       }} disabled={user.username === currentUser}>
-                        <option value="staff">Standard Staff</option>
-                        <option value="manager">System Manager</option>
-                        <option value="admin">Super Administrator</option>
+                        <option value="staff">Standard Staff (POS)</option>
+                        <option value="manager">System Manager (Ledger)</option>
+                        <option value="admin">Super Administrator (Full)</option>
                       </select>
                     </td>
                   </tr>
