@@ -53,7 +53,7 @@ ChartJS.register(
 );
 
 // ============================================================================
-// 2. PREMIUM UI COMPONENTS (MODALS & TOASTS)
+// 2. PREMIUM UI COMPONENTS (MODALS & TOASTS) - RESTORED
 // ============================================================================
 
 const Toast = ({ message, type, onClose }) => {
@@ -66,7 +66,7 @@ const Toast = ({ message, type, onClose }) => {
     switch(type) {
       case 'success': return { bg: '#10b981', icon: 'fa-check-circle' };
       case 'error': return { bg: '#ef4444', icon: 'fa-exclamation-triangle' };
-      case 'warning': return { bg: '#f59e0b', icon: 'fa-engine-warning' };
+      case 'warning': return { bg: '#f59e0b', icon: 'fa-triangle-exclamation' };
       default: return { bg: '#3b82f6', icon: 'fa-info-circle' };
     }
   };
@@ -122,7 +122,7 @@ const Modal = ({ isOpen, onClose, title, children, width = '700px' }) => {
 };
 
 // ============================================================================
-// 3. MASTER APPLICATION ARCHITECTURE
+// 3. MAIN APPLICATION COMPONENT
 // ============================================================================
 function App() {
   const API_BASE = 'https://inv-pro-erp.onrender.com/api';
@@ -148,7 +148,7 @@ function App() {
     salesTrend: [] 
   });
   
-  // B2B Supply Chain States (NEW & EXPANDED)
+  // 🔥 B2B Supply Chain States (NEW) 🔥
   const [suppliers, setSuppliers] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [selectedPOItems, setSelectedPOItems] = useState([]);
@@ -160,7 +160,7 @@ function App() {
   const [editingId, setEditingId] = useState(null);
   const [posCategory, setPosCategory] = useState('All');
   
-  // Pagination State (Restored from old code)
+  // Pagination State (Restored)
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
   
@@ -204,7 +204,7 @@ function App() {
   // C. DATA SYNCHRONIZATION (API FETCHERS)
   // --------------------------------------------------------------------------
 
-  const fetchInventory = useCallback(async () => {
+  const fetchInventoryData = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/products`);
       setProducts(res.data);
@@ -240,7 +240,7 @@ function App() {
     }
   }, []);
 
-  const fetchAdminModules = useCallback(async () => {
+  const fetchAdminData = useCallback(async () => {
     if (auth.userRole !== 'admin' && auth.userRole !== 'manager') return;
     try {
       if (auth.userRole === 'admin') {
@@ -272,39 +272,38 @@ function App() {
       
       if (token && user) {
         setAuth(prev => ({ ...prev, isLoggedIn: true, currentUser: user, userRole: role || 'staff' }));
-        await fetchInventory();
+        await fetchInventoryData();
         await fetchSalesData();
         if(role === 'admin' || role === 'manager') {
             await fetchSuppliers();
             await fetchPurchaseOrders();
-            await fetchAdminModules();
+            await fetchAdminData();
         }
       }
       setAppState(prev => ({ ...prev, isLoading: false }));
     };
     bootstrapSystem();
-  }, [fetchInventory, fetchSalesData, fetchSuppliers, fetchPurchaseOrders, fetchAdminModules]);
+  }, [fetchInventoryData, fetchSalesData, fetchSuppliers, fetchPurchaseOrders, fetchAdminData]);
 
   useEffect(() => {
     if (auth.isLoggedIn) {
-      if (activeTab === 'users' && auth.userRole === 'admin') fetchAdminModules();
-      if (activeTab === 'ledger' && (auth.userRole === 'admin' || auth.userRole === 'manager')) fetchAdminModules();
-      if (activeTab === 'analytics' && (auth.userRole === 'admin' || auth.userRole === 'manager')) fetchAdminModules();
+      if (activeTab === 'users' && auth.userRole === 'admin') fetchAdminData();
+      if (activeTab === 'ledger' && (auth.userRole === 'admin' || auth.userRole === 'manager')) fetchAdminData();
+      if (activeTab === 'analytics' && (auth.userRole === 'admin' || auth.userRole === 'manager')) fetchAdminData();
       if (activeTab === 'suppliers') fetchSuppliers();
       if (activeTab === 'orders') fetchPurchaseOrders();
       if (activeTab === 'sales') {
-          fetchInventory();
+          fetchInventoryData();
           setTimeout(() => barcodeRef.current?.focus(), 500);
       }
     }
-  }, [activeTab, auth.isLoggedIn, auth.userRole, fetchAdminModules, fetchInventory, fetchSuppliers, fetchPurchaseOrders]);
+  }, [activeTab, auth.isLoggedIn, auth.userRole, fetchAdminData, fetchInventoryData, fetchSuppliers, fetchPurchaseOrders]);
 
   // --------------------------------------------------------------------------
   // E. AUTHENTICATION ENGINE (STRICT RBAC)
   // --------------------------------------------------------------------------
   
   const handleAuthInput = (e) => {
-    setAuthError('');
     setAuth({ ...auth, [e.target.name]: e.target.value });
   };
 
@@ -322,7 +321,7 @@ function App() {
       if (!auth.showSignup) {
         const actualRole = res.data.role || 'staff';
         if (actualRole !== auth.loginType) {
-          showToast(`Security Alert: Role '${actualRole.toUpperCase()}' cannot access ${auth.loginType.toUpperCase()} portal.`, "error");
+          showToast(`Profile ${actualRole.toUpperCase()} mismatched with ${auth.loginType.toUpperCase()} portal!`, "error");
           setAppState(prev => ({ ...prev, isLoading: false }));
           return;
         }
@@ -336,24 +335,24 @@ function App() {
             userRole: actualRole, password: '' 
         }));
         
-        showToast(`Encrypted Session Established for ${res.data.username}`, "success");
-        fetchInventory(); fetchSalesData();
+        showToast(`Welcome back, ${res.data.username}!`, "success");
+        fetchInventoryData(); fetchSalesData();
         if(actualRole === 'admin' || actualRole === 'manager') {
-            fetchSuppliers(); fetchPurchaseOrders(); fetchAdminModules();
+            fetchSuppliers(); fetchPurchaseOrders(); fetchAdminData();
         }
       } else {
-        showToast("Network Identity Registered. Please Authenticate.", "success");
+        showToast("Account Created! Please login.", "success");
         setAuth(prev => ({ ...prev, showSignup: false, loginType: 'staff', password: '' }));
       }
     } catch (err) { 
-      showToast(err.response?.data?.error || "Authentication Server Unreachable", "error"); 
+      showToast(err.response?.data?.error || "Authentication Server Offline", "error"); 
     } finally { 
       setAppState(prev => ({ ...prev, isLoading: false })); 
     }
   };
 
   const handleLogout = () => {
-    if(window.confirm("WARNING: Are you sure you want to terminate this secure session?")) {
+    if(window.confirm("Terminate secure session?")) {
         localStorage.clear(); 
         window.location.reload();
     }
@@ -377,7 +376,7 @@ function App() {
 
   const handleInventorySubmit = async (e) => {
     e.preventDefault();
-    if (auth.userRole !== 'admin') return showToast("Authority Denied. Super Admin required.", "error");
+    if (auth.userRole !== 'admin') return showToast("Admin privileges required.", "error");
 
     const data = new FormData();
     Object.keys(formData).forEach(k => {
@@ -389,27 +388,27 @@ function App() {
         const config = { headers: { 'Content-Type': 'multipart/form-data' } };
         if (editingId && editingId !== 'po-view' && editingId !== 'add-supplier') {
             await axios.put(`${API_BASE}/products/${editingId}`, data, config);
-            showToast("Entity modified successfully in Cloud Node.", "success");
+            showToast("Entity updated successfully", "success");
         } else {
             await axios.post(`${API_BASE}/products`, data, config);
-            showToast("New Entity injected into Cloud Registry.", "success");
+            showToast("New entity registered", "success");
         }
         setIsModalOpen(false);
-        fetchInventory();
-        fetchAdminModules();
+        fetchInventoryData();
+        fetchAdminData();
     } catch (err) { 
         showToast("Mutation failed: " + err.message, "error"); 
     }
   };
 
   const deleteProduct = async (id) => {
-    if (auth.userRole !== 'admin') return showToast("Permission Denied.", "error");
-    if(window.confirm("CRITICAL WARNING: Purging this SKU will permanently alter historical audit logs. Proceed?")) {
+    if (auth.userRole !== 'admin') return showToast("Permission Denied", "error");
+    if(window.confirm("WARNING: Purging this SKU will alter audit logs. Proceed?")) {
       try {
         await axios.delete(`${API_BASE}/products/${id}`);
-        showToast("Entity purged from global database.", "success");
-        fetchInventory();
-        fetchAdminModules();
+        showToast("Entity purged from database.", "info");
+        fetchInventoryData();
+        fetchAdminData();
       } catch (err) { showToast("Purge failed.", "error"); }
     }
   };
@@ -429,14 +428,14 @@ function App() {
   };
 
   const handleReceiveOrder = async (poId) => {
-    if(!window.confirm("Verify physical stock receipt against PO before committing to ledger?")) return;
+    if(!window.confirm("Verify physical stock receipt before commit?")) return;
     try {
         await axios.put(`${API_BASE}/purchase-orders/${poId}/receive`);
-        showToast("✅ Inventory updated & Audit Ledger synced via PO", "success");
-        fetchInventory();
+        showToast("Inventory updated via B2B Order", "success");
+        fetchInventoryData();
         fetchPurchaseOrders();
-        fetchAdminModules();
-    } catch (err) { showToast("Stock receipt failed", "error"); }
+        fetchAdminData();
+    } catch (err) { showToast("Receipt failed", "error"); }
   };
 
   const openPOItems = async (poId) => {
@@ -445,7 +444,7 @@ function App() {
         setSelectedPOItems(res.data);
         setEditingId('po-view');
         setIsModalOpen(true);
-    } catch (err) { showToast("Failed to retrieve order breakdown", "error"); }
+    } catch (err) { showToast("Failed to fetch order items", "error"); }
   };
 
   // --------------------------------------------------------------------------
@@ -453,12 +452,12 @@ function App() {
   // --------------------------------------------------------------------------
   
   const addToCart = (product) => {
-    if (product.quantity <= 0) return showToast(`❌ Depletion Error: ${product.name} is out of stock.`, "error");
+    if (product.quantity <= 0) return showToast(`${product.name} is Out of Stock!`, "warning");
     setCart(prev => {
         const existing = prev.find(x => x.id === product.id);
         if (existing) {
             if(existing.cartQty >= product.quantity) { 
-                showToast(`⚠️ Inventory Limit Reached for ${product.name}`, "warning"); 
+                showToast(`Max stock reached for ${product.name}`, "warning"); 
                 return prev; 
             }
             return prev.map(x => x.id === product.id ? { ...x, cartQty: x.cartQty + 1 } : x);
@@ -472,7 +471,7 @@ function App() {
       if (item.id === id) {
         const newQty = item.cartQty + delta;
         if (newQty > item.quantity) { 
-            showToast("⚠️ Cannot exceed available stock limit!", "warning"); 
+            showToast("Stock Limit!", "warning"); 
             return item; 
         }
         return { ...item, cartQty: newQty };
@@ -488,15 +487,15 @@ function App() {
     const found = products.find(p => p.sku.toLowerCase() === scanned);
     if (found) {
       addToCart(found);
-      showToast(`Scanned & Queued: ${found.name}`, "success");
+      showToast(`Scanned: ${found.name}`, "success");
     } else {
-      showToast(`❌ Error 404: SKU '${scanned}' not found in registry.`, "error");
+      showToast("SKU not recognized", "error");
     }
     setBarcodeInput('');
   };
 
-  const processCheckout = async () => {
-    if(cart.length === 0) return showToast("Terminal queue is empty.", "warning");
+  const checkout = async () => {
+    if(cart.length === 0) return;
     setIsCheckingOut(true);
     try {
         // Bulk Sync to Database
@@ -506,43 +505,32 @@ function App() {
         
         // Generate High-Fidelity PDF Invoice
         const doc = new jsPDF();
-        const invNo = `INV-${Date.now()}-${Math.floor(1000+Math.random()*9000)}`;
+        const invNo = Math.floor(Math.random() * 900000) + 100000;
         
-        // Header
-        doc.setFillColor(79, 70, 229);
-        doc.rect(0, 0, 210, 40, 'F');
-        doc.setFontSize(24); doc.setTextColor(255, 255, 255);
-        doc.text("INV-PRO BUSINESS SUITE", 105, 20, { align: "center" });
-        doc.setFontSize(12);
-        doc.text("Master Fiscal Invoice", 105, 28, { align: "center" });
+        doc.setFontSize(24); doc.setTextColor(79, 70, 229);
+        doc.text("INV-PRO ENTERPRISE", 105, 20, { align: "center" });
         
-        // Meta
-        doc.setFontSize(10); doc.setTextColor(15, 23, 42);
-        doc.text(`Reference: ${invNo}`, 15, 55);
-        doc.text(`Cashier Node: ${auth.currentUser.toUpperCase()}`, 140, 55);
-        doc.text(`Timestamp: ${new Date().toLocaleString()}`, 140, 62);
+        doc.setFontSize(10); doc.setTextColor(100, 116, 139);
+        doc.text(`Invoice: #INV-${invNo}  |  Cashier: ${auth.currentUser.toUpperCase()}  |  Date: ${new Date().toLocaleString()}`, 105, 30, { align: "center" });
+        doc.line(15, 35, 195, 35);
         
-        // Table
         autoTable(doc, {
-            startY: 75,
-            head: [['SKU Code', 'Product Entity', 'Qty', 'Unit Rate', 'Subtotal']],
+            startY: 45,
+            head: [['SKU', 'Product', 'Qty', 'Unit Rate', 'Total']],
             body: cart.map(i => [i.sku, i.name, i.cartQty, `Rs.${i.price}`, `Rs.${i.price * i.cartQty}`]),
             theme: 'grid',
-            headStyles: { fillColor: [79, 70, 229] },
-            styles: { fontSize: 10, cellPadding: 5 }
+            headStyles: { fillColor: [15, 23, 42] }
         });
         
-        // Footer
-        const finalY = doc.lastAutoTable.finalY + 15;
         doc.setFontSize(14); doc.setTextColor(16, 185, 129);
-        doc.text(`GRAND TOTAL: Rs. ${total.toLocaleString()}`, 195, finalY, { align: 'right' });
-        doc.save(`${invNo}.pdf`);
+        doc.text(`GRAND TOTAL: Rs. ${total.toLocaleString()}`, 195, doc.lastAutoTable.finalY + 20, { align: 'right' });
+        doc.save(`Invoice_INV-${invNo}.pdf`);
         
         setCart([]);
-        showToast("✅ Transaction Completed. Ledger Synchronized.", "success");
-        fetchInventory(); fetchSalesData(); fetchAdminModules(); fetchPurchaseOrders();
+        showToast("Transaction Complete & Invoice Generated", "success");
+        fetchInventoryData(); fetchSalesData(); fetchAdminData(); fetchPurchaseOrders();
     } catch (err) { 
-        showToast("❌ System Synchronization Failed.", "error"); 
+        showToast("Sync Error during checkout", "error"); 
     } finally { 
         setIsCheckingOut(false); 
     }
@@ -586,71 +574,79 @@ function App() {
   // --- AUTHENTICATION VIEWPORT ---
   if (!auth.isLoggedIn) {
     return (
-      <div className="ent-auth-viewport">
-        {/* Left Branding */}
-        <div className="ent-auth-branding">
-            <div className="branding-container">
-                <div className="ent-badge">ENTERPRISE EDITION v5.0</div>
-                <h1 className="ent-main-title">INV-PRO <br/><span>Business Suite</span></h1>
-                <p className="ent-sub-title">
-                    The ultimate architecture for retail supremacy. Engineered with zero-latency POS, B2B supply chain automation, and deep business intelligence.
-                </p>
-                <div style={{ display: 'flex', gap: '50px', marginTop: '40px' }}>
-                    <div style={{ borderLeft: '4px solid #10b981', paddingLeft: '15px' }}><h3 style={{ margin: 0, fontSize: '2.2rem', color: '#10b981', lineHeight: 1 }}>99.9%</h3><p style={{ margin: '5px 0 0', color: '#94a3b8', fontWeight: 700 }}>Node Uptime</p></div>
-                    <div style={{ borderLeft: '4px solid #f59e0b', paddingLeft: '15px' }}><h3 style={{ margin: 0, fontSize: '2.2rem', color: '#f59e0b', lineHeight: 1 }}>SHA-512</h3><p style={{ margin: '5px 0 0', color: '#94a3b8', fontWeight: 700 }}>Encrypted Logic</p></div>
-                    <div style={{ borderLeft: '4px solid #3b82f6', paddingLeft: '15px' }}><h3 style={{ margin: 0, fontSize: '2.2rem', color: '#3b82f6', lineHeight: 1 }}>REAL-TIME</h3><p style={{ margin: '5px 0 0', color: '#94a3b8', fontWeight: 700 }}>Data Sync</p></div>
-                </div>
-            </div>
+      <div style={{ display: 'flex', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', fontFamily: "'Inter', sans-serif" }}>
+        {/* Left Branding Panel */}
+        <div style={{ flex: 1.2, background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(79,70,229,0.15) 0%, rgba(0,0,0,0) 70%)', top: '-10%', left: '-10%' }}></div>
+          <div style={{ zIndex: 10 }}>
+            <span style={{ display: 'inline-block', padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '30px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '2px', marginBottom: '25px', color: '#818cf8' }}>
+              <i className="fas fa-shield-check"></i> MILITARY-GRADE SECURITY
+            </span>
+            <h1 style={{ fontSize: '5rem', fontWeight: 900, lineHeight: 1, margin: '0 0 20px 0' }}>INV-PRO <br/><span style={{ color: '#4f46e5' }}>Suite 5.0</span></h1>
+            <p style={{ fontSize: '1.2rem', color: '#94a3b8', maxWidth: '500px', lineHeight: 1.6 }}>The world's most advanced Cloud POS, Supply Chain, and Inventory Management architecture.</p>
+          </div>
         </div>
 
-        {/* Right Form */}
-        <div className="ent-auth-form-side">
-            {toasts.map(t => <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />)}
-            <div className="ent-login-card">
-                {!auth.showSignup && (
-                    <div className="ent-portal-tabs">
-                        {['admin', 'manager', 'staff'].map(role => (
-                            <button key={role} onClick={() => setAuth({...auth, loginType: role})} className={auth.loginType === role ? 'active' : ''}>
-                                {role.toUpperCase()} PORTAL
-                            </button>
-                        ))}
-                    </div>
-                )}
-                
-                <div className="ent-card-head">
-                    <div className="ent-icon-circle">
-                        <i className={`fas ${auth.showSignup ? 'fa-user-plus' : 'fa-fingerprint'}`}></i>
-                    </div>
-                    <h2 style={{ fontSize: '2rem', fontWeight: 900, color: '#0f172a', margin: '0 0 10px 0' }}>{auth.showSignup ? 'Network Registration' : 'Authenticate Session'}</h2>
-                    <p style={{ color: '#64748b', margin: 0, fontWeight: 500 }}>Secure connection required to access {auth.loginType.toUpperCase()} node.</p>
-                </div>
-
-                <form onSubmit={handleAuthSubmit} className="ent-master-form">
-                    <div className="ent-input-group">
-                        <label>NETWORK IDENTITY (USERNAME)</label>
-                        <div className="ent-input-wrapper">
-                            <i className="fas fa-user-shield"></i>
-                            <input required name="username" value={auth.username} onChange={handleAuthInput} placeholder="Enter your assigned ID" />
-                        </div>
-                    </div>
-                    <div className="ent-input-group">
-                        <label>SECURITY PASSPHRASE</label>
-                        <div className="ent-input-wrapper">
-                            <i className="fas fa-key"></i>
-                            <input required type="password" name="password" value={auth.password} onChange={handleAuthInput} placeholder="••••••••" />
-                        </div>
-                    </div>
-                    <button type="submit" disabled={appState.isLoading} className={`ent-btn-auth ${auth.loginType}`}>
-                        {appState.isLoading ? <><i className="fas fa-circle-notch fa-spin"></i> ESTABLISHING CONNECTION...</> : <><i className="fas fa-lock-open"></i> INITIATE SECURE SESSION</>}
-                    </button>
-                </form>
-
-                <div style={{ textAlign: 'center', marginTop: '35px' }}>
-                    <button onClick={() => setAuth({...auth, showSignup: !auth.showSignup})} style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', transition: '0.3s' }}>
-                        {auth.showSignup ? "← Back to Authentication Gate" : "New Operator? Request Network Access"}
-                    </button>
-                </div>
+        {/* Right Form Panel */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', position: 'relative' }}>
+          {toasts.map(t => <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />)}
+          
+          <div style={{ width: '100%', maxWidth: '480px', padding: '50px', background: '#ffffff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <h2 style={{ fontSize: '2rem', color: '#0f172a', fontWeight: 800, margin: '0 0 10px 0' }}>{auth.showSignup ? 'Create Account' : 'Portal Access'}</h2>
+              <p style={{ color: '#64748b', margin: 0 }}>Please provide your credentials below.</p>
             </div>
+
+            {!auth.showSignup && (
+              <div style={{ display: 'flex', background: '#f1f5f9', padding: '6px', borderRadius: '12px', marginBottom: '30px' }}>
+                {['admin', 'manager', 'staff'].map(role => (
+                  <button key={role} onClick={() => setAuth({ ...auth, loginType: role })} style={{
+                    flex: 1, padding: '12px 0', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, textTransform: 'capitalize', transition: '0.3s',
+                    background: auth.loginType === role ? '#ffffff' : 'transparent',
+                    color: auth.loginType === role ? '#4f46e5' : '#64748b',
+                    boxShadow: auth.loginType === role ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none'
+                  }}>{role}</button>
+                ))}
+              </div>
+            )}
+
+            <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>Username Identity</label>
+                <div style={{ position: 'relative' }}>
+                  <i className="fas fa-user" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                  <input required name="username" value={auth.username} onChange={handleAuthInput} placeholder="Enter your ID" style={{
+                    width: '100%', boxSizing: 'border-box', height: '54px', paddingLeft: '45px', paddingRight: '15px',
+                    backgroundColor: '#f8fafc', color: '#0f172a', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1rem', outline: 'none'
+                  }} onFocus={(e) => e.target.style.borderColor = '#4f46e5'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>Security Passphrase</label>
+                <div style={{ position: 'relative' }}>
+                  <i className="fas fa-lock" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                  <input required type="password" name="password" value={auth.password} onChange={handleAuthInput} placeholder="••••••••" style={{
+                    width: '100%', boxSizing: 'border-box', height: '54px', paddingLeft: '45px', paddingRight: '15px',
+                    backgroundColor: '#f8fafc', color: '#0f172a', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1rem', outline: 'none'
+                  }} onFocus={(e) => e.target.style.borderColor = '#4f46e5'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                </div>
+              </div>
+
+              <button type="submit" disabled={appState.isLoading} style={{
+                width: '100%', height: '54px', backgroundColor: auth.showSignup ? '#0f172a' : (auth.loginType === 'admin' ? '#4f46e5' : auth.loginType === 'manager' ? '#0ea5e9' : '#10b981'),
+                color: '#fff', border: 'none', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 800, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '10px', transition: '0.3s'
+              }}>
+                {appState.isLoading ? <i className="fas fa-spinner fa-spin"></i> : (auth.showSignup ? 'Register New Node' : 'Authenticate Session')}
+              </button>
+            </form>
+
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
+              <button onClick={() => setAuth({ ...auth, showSignup: !auth.showSignup })} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem' }}>
+                {auth.showSignup ? 'Already have access? Return to Login' : 'Request network access'} <i className="fas fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -658,656 +654,676 @@ function App() {
 
   // --- CORE ENTERPRISE LAYOUT ---
   return (
-    <div className="ent-app-layout">
-      {toasts.map(t => <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />)}
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', backgroundColor: '#f1f5f9', fontFamily: "'Inter', sans-serif", color: '#0f172a' }}>
       
-      {/* --------------------------------------------------------------------- */}
-      {/* SIDEBAR NAVIGATION MODULE */}
-      {/* --------------------------------------------------------------------- */}
-      <div className="ent-sidebar" style={{ width: appState.isSidebarOpen ? '280px' : '85px' }}>
-        <div className="ent-logo-section">
-            <div className="ent-logo-icon"><i className="fas fa-cube"></i></div>
-            {appState.isSidebarOpen && <div className="ent-logo-text">INV-PRO <span>SUITE</span></div>}
-        </div>
-        
-        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '10px' }}>
-            {appState.isSidebarOpen && <div className="ent-nav-label">Core Operations</div>}
-            <div className={`ent-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')} title="Inventory Hub">
-                <i className="fas fa-layer-group"></i> {appState.isSidebarOpen && <span>Inventory Hub</span>}
-            </div>
-            <div className={`ent-nav-item ${activeTab === 'sales' ? 'active' : ''}`} onClick={() => setActiveTab('sales')} title="POS Terminal">
-                <i className="fas fa-cash-register"></i> {appState.isSidebarOpen && <span>Smart POS</span>}
-            </div>
+      {/* GLOBAL TOAST RENDERER */}
+      <div style={{ position: 'fixed', zIndex: 99999 }}>{toasts.map(t => <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />)}</div>
 
-            {isManager && (
-                <>
-                    {appState.isSidebarOpen && <div className="ent-nav-label" style={{ marginTop: '30px' }}>Supply Chain (B2B)</div>}
-                    <div className={`ent-nav-item ${activeTab === 'suppliers' ? 'active' : ''}`} onClick={() => setActiveTab('suppliers')} title="Supplier Network">
-                        <i className="fas fa-truck-ramp-box"></i> {appState.isSidebarOpen && <span>Vendor Network</span>}
-                    </div>
-                    <div className={`ent-nav-item ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')} title="Purchase Orders">
-                        <i className="fas fa-file-invoice-dollar"></i> {appState.isSidebarOpen && <span>Purchase Orders</span>}
-                    </div>
-                    
-                    {appState.isSidebarOpen && <div className="ent-nav-label" style={{ marginTop: '30px' }}>Intelligence & Audit</div>}
-                    <div className={`ent-nav-item ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')} title="Business Analytics">
-                        <i className="fas fa-chart-pie"></i> {appState.isSidebarOpen && <span>BI Analytics</span>}
-                    </div>
-                    <div className={`ent-nav-item ${activeTab === 'ledger' ? 'active' : ''}`} onClick={() => setActiveTab('ledger')} title="Stock Ledger">
-                        <i className="fas fa-book-journal-whills"></i> {appState.isSidebarOpen && <span>Audit Ledger</span>}
-                    </div>
-                </>
-            )}
-
-            {isAdmin && (
-                <>
-                    {appState.isSidebarOpen && <div className="ent-nav-label" style={{ marginTop: '30px' }}>Administration</div>}
-                    <div className={`ent-nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')} title="Access Control">
-                        <i className="fas fa-user-shield"></i> {appState.isSidebarOpen && <span>Access Control</span>}
-                    </div>
-                </>
-            )}
-        </div>
+      {/* --- SIDEBAR NAVIGATION (STRICT LAYOUT) --- */}
+      <div style={{ width: appState.isSidebarOpen ? '280px' : '80px', height: '100vh', backgroundColor: '#0f172a', color: '#fff', display: 'flex', flexDirection: 'column', transition: 'width 0.3s ease', flexShrink: 0, zIndex: 100 }}>
         
-        <div className="ent-sidebar-footer" onClick={handleLogout} title="Logout">
-            <i className="fas fa-power-off"></i> {appState.isSidebarOpen && <span>TERMINATE SESSION</span>}
+        {/* Brand Header */}
+        <div style={{ height: '80px', display: 'flex', alignItems: 'center', padding: '0 25px', borderBottom: '1px solid rgba(255,255,255,0.05)', justifyContent: appState.isSidebarOpen ? 'space-between' : 'center' }}>
+          {appState.isSidebarOpen && <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '10px' }}><i className="fas fa-cube" style={{ color: '#4f46e5' }}></i> INV-PRO</h1>}
+          <button onClick={() => setAppState({...appState, isSidebarOpen: !appState.isSidebarOpen})} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }}><i className="fas fa-bars"></i></button>
+        </div>
+
+        {/* Nav Items */}
+        <div style={{ flex: 1, padding: '20px 15px', display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto' }}>
+          {appState.isSidebarOpen && <div style={{ fontSize: '0.7rem', color: '#475569', fontWeight: 800, textTransform: 'uppercase', paddingLeft: '10px', marginTop: '10px' }}>Primary Modules</div>}
+          
+          <button onClick={() => setActiveTab('dashboard')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'dashboard' ? 'rgba(79,70,229,0.15)' : 'transparent', color: activeTab === 'dashboard' ? '#818cf8' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+            <i className="fas fa-table-cells-large" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Inventory Matrix"}
+          </button>
+          
+          <button onClick={() => setActiveTab('sales')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'sales' ? 'rgba(16,185,129,0.15)' : 'transparent', color: activeTab === 'sales' ? '#34d399' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+            <i className="fas fa-cash-register" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "POS Terminal"}
+          </button>
+
+          {isManager && (
+            <>
+              {appState.isSidebarOpen && <div style={{ fontSize: '0.7rem', color: '#475569', fontWeight: 800, textTransform: 'uppercase', paddingLeft: '10px', marginTop: '20px' }}>Supply Chain (B2B)</div>}
+              <button onClick={() => setActiveTab('suppliers')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'suppliers' ? 'rgba(139,92,246,0.15)' : 'transparent', color: activeTab === 'suppliers' ? '#a78bfa' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+                <i className="fas fa-truck-ramp-box" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Supplier Network"}
+              </button>
+              <button onClick={() => setActiveTab('orders')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'orders' ? 'rgba(236,72,153,0.15)' : 'transparent', color: activeTab === 'orders' ? '#f472b6' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+                <i className="fas fa-file-invoice-dollar" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Purchase Orders"}
+              </button>
+
+              {appState.isSidebarOpen && <div style={{ fontSize: '0.7rem', color: '#475569', fontWeight: 800, textTransform: 'uppercase', paddingLeft: '10px', marginTop: '20px' }}>Intelligence & Audit</div>}
+              <button onClick={() => setActiveTab('analytics')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'analytics' ? 'rgba(245,158,11,0.15)' : 'transparent', color: activeTab === 'analytics' ? '#fbbf24' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+                <i className="fas fa-chart-pie" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Data Analytics"}
+              </button>
+              <button onClick={() => setActiveTab('ledger')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'ledger' ? 'rgba(56,189,248,0.15)' : 'transparent', color: activeTab === 'ledger' ? '#38bdf8' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+                <i className="fas fa-book-journal-whills" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Audit Ledger"}
+              </button>
+            </>
+          )}
+
+          {isAdmin && (
+            <>
+              {appState.isSidebarOpen && <div style={{ fontSize: '0.7rem', color: '#475569', fontWeight: 800, textTransform: 'uppercase', paddingLeft: '10px', marginTop: '20px' }}>Administration</div>}
+              <button onClick={() => setActiveTab('users')} style={{ display: 'flex', alignItems: 'center', padding: '15px', background: activeTab === 'users' ? 'rgba(239,68,68,0.15)' : 'transparent', color: activeTab === 'users' ? '#f87171' : '#94a3b8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: '0.2s', justifyContent: appState.isSidebarOpen ? 'flex-start' : 'center' }}>
+                <i className="fas fa-users-gear" style={{ fontSize: '1.2rem', width: appState.isSidebarOpen ? '30px' : 'auto' }}></i> {appState.isSidebarOpen && "Access Control"}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* User Profile Footer */}
+        <div style={{ padding: '20px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: isAdmin ? '#4f46e5' : '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>{auth.currentUser.charAt(0).toUpperCase()}</div>
+          {appState.isSidebarOpen && (
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div style={{ fontWeight: 800, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{auth.currentUser}</div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase' }}>{auth.userRole} Node</div>
+            </div>
+          )}
+          {appState.isSidebarOpen && <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><i className="fas fa-power-off"></i></button>}
         </div>
       </div>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* MAIN VIEWPORT */}
-      {/* --------------------------------------------------------------------- */}
-      <div className="ent-main-content">
+      {/* --- MAIN CONTENT AREA (STRICT WIDTH & SCROLL) --- */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         
-        <header className="ent-page-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <button onClick={() => setAppState({...appState, isSidebarOpen: !appState.isSidebarOpen})} style={{ background: '#fff', border: '1px solid #e2e8f0', width: '45px', height: '45px', borderRadius: '12px', fontSize: '1.2rem', color: '#0f172a', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                    <i className={`fas fa-${appState.isSidebarOpen ? 'angle-left' : 'bars'}`}></i>
-                </button>
-                <div className="header-info">
-                    <h1 style={{ textTransform: 'capitalize' }}>{activeTab.replace('-', ' ')} Module</h1>
-                    <p>Status: <span style={{ color: '#10b981', fontWeight: 700 }}>● Active Node</span> | AES-512 Secured</p>
+        {/* Top Header */}
+        <div style={{ height: '80px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px', flexShrink: 0 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', textTransform: 'capitalize' }}>{activeTab.replace('-', ' ')} Module</h2>
+            <p style={{ margin: '5px 0 0', fontSize: '0.85rem', color: '#64748b' }}>System Time: {new Date().toLocaleDateString()}</p>
+          </div>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <span style={{ padding: '8px 16px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '30px', fontSize: '0.85rem', fontWeight: 700 }}><i className="fas fa-circle-check"></i> System Online</span>
+          </div>
+        </div>
+
+        {/* Tab Contents (Scrollable Area) */}
+        <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
+
+          {/* =================================================== */}
+          {/* TAB 1: INVENTORY DASHBOARD (PAGINATION RESTORED) */}
+          {/* =================================================== */}
+          {activeTab === 'dashboard' && (
+            <div style={{ animation: 'fadeIn 0.5s ease' }}>
+              {/* KPI Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '25px', marginBottom: '35px' }}>
+                <div style={{ background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '5px solid #4f46e5', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 700 }}>Total SKUs</p>
+                  <h3 style={{ margin: '10px 0 0', fontSize: '2rem', color: '#0f172a' }}>{products.length}</h3>
                 </div>
+                <div style={{ background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '5px solid #10b981', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 700 }}>Total Assets Value</p>
+                  <h3 style={{ margin: '10px 0 0', fontSize: '2rem', color: '#0f172a' }}>₹{products.reduce((acc, p) => acc + (p.price * p.quantity), 0).toLocaleString()}</h3>
+                </div>
+                <div style={{ background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '5px solid #f59e0b', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 700 }}>Low Stock Warnings</p>
+                  <h3 style={{ margin: '10px 0 0', fontSize: '2rem', color: '#0f172a' }}>{products.filter(p => p.quantity < p.min_threshold).length}</h3>
+                </div>
+                <div style={{ background: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '5px solid #8b5cf6', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 700 }}>Total Units Logged</p>
+                  <h3 style={{ margin: '10px 0 0', fontSize: '2rem', color: '#0f172a' }}>{products.reduce((acc, p) => acc + p.quantity, 0)}</h3>
+                </div>
+              </div>
+
+              {/* Toolbar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', width: '350px' }}>
+                    <i className="fas fa-search" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                    <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by Entity Name or SKU..." style={{ width: '100%', boxSizing: 'border-box', height: '48px', paddingLeft: '45px', border: '1px solid #cbd5e1', borderRadius: '10px', outline: 'none', backgroundColor: '#f8fafc' }} />
+                  </div>
+                  <select value={posCategory} onChange={(e) => setPosCategory(e.target.value)} style={{ height: '48px', padding: '0 20px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', outline: 'none', fontWeight: 600 }}>
+                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                {isAdmin && (
+                  <button onClick={openAddModal} style={{ backgroundColor: '#4f46e5', color: '#fff', border: 'none', padding: '0 25px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', height: '48px' }}>
+                    <i className="fas fa-plus"></i> Initialize SKU
+                  </button>
+                )}
+              </div>
+
+              {/* Data Table */}
+              <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                    <tr>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Visual / Entity</th>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>SKU Code</th>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Classification</th>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Volume</th>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Supplier Link</th>
+                      <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Valuation</th>
+                      {isAdmin && <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentProducts.length === 0 ? (
+                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>No entities match current parameters.</td></tr>
+                    ) : (
+                      currentProducts.map(p => (
+                        <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <td style={{ padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            {p.image_url ? (
+                              <img src={p.image_url.startsWith('http') ? p.image_url : `${API_BASE.replace('/api', '')}${p.image_url}`} style={{ width: '50px', height: '50px', borderRadius: '10px', objectFit: 'cover' }} alt="Product" />
+                            ) : (
+                              <div style={{ width: '50px', height: '50px', borderRadius: '10px', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}><i className="fas fa-image"></i></div>
+                            )}
+                            <span style={{ fontWeight: 800, color: '#0f172a' }}>{p.name}</span>
+                          </td>
+                          <td style={{ padding: '15px 20px', fontFamily: 'monospace', color: '#64748b' }}>{p.sku}</td>
+                          <td style={{ padding: '15px 20px' }}><span style={{ backgroundColor: '#e0e7ff', color: '#4f46e5', padding: '5px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800 }}>{p.category}</span></td>
+                          <td style={{ padding: '15px 20px' }}><span style={{ backgroundColor: p.quantity < p.min_threshold ? '#fee2e2' : '#dcfce7', color: p.quantity < p.min_threshold ? '#ef4444' : '#166534', padding: '5px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800 }}>{p.quantity} Units</span></td>
+                          <td style={{ padding: '15px 20px', fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>{p.supplier_name || 'UNASSIGNED'}</td>
+                          <td style={{ padding: '15px 20px', fontWeight: 800 }}>₹{p.price.toLocaleString()}</td>
+                          {isAdmin && (
+                            <td style={{ padding: '15px 20px', textAlign: 'right' }}>
+                              <button onClick={() => openEditModal(p)} style={{ width: '36px', height: '36px', borderRadius: '8px', border: 'none', backgroundColor: '#f1f5f9', color: '#3b82f6', cursor: 'pointer', marginRight: '10px' }}><i className="fas fa-edit"></i></button>
+                              <button onClick={() => deleteProduct(p.id)} style={{ width: '36px', height: '36px', borderRadius: '8px', border: 'none', backgroundColor: '#fee2e2', color: '#ef4444', cursor: 'pointer' }}><i className="fas fa-trash"></i></button>
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+                {/* Pagination Controls */}
+                <div style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                  <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredProducts.length)} of {filteredProducts.length} entries</span>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button disabled={currentPage === 1} onClick={() => setCurrentPage(p=>p-1)} style={{ padding: '8px 16px', border: '1px solid #cbd5e1', backgroundColor: '#fff', borderRadius: '8px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}>Previous</button>
+                    <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p=>p+1)} style={{ padding: '8px 16px', border: '1px solid #cbd5e1', backgroundColor: '#fff', borderRadius: '8px', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}>Next</button>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <div className="header-profile">
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 900, color: '#0f172a', fontSize: '0.95rem' }}>{auth.currentUser}</div>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: auth.userRole === 'admin' ? '#ef4444' : auth.userRole === 'manager' ? '#3b82f6' : '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>{auth.userRole} PRIVILEGE</div>
-                </div>
-                <div className="avatar">{auth.currentUser.charAt(0).toUpperCase()}</div>
-            </div>
-        </header>
+          )}
 
-        {/* --------------------------------------------------------------------- */}
-        {/* MODULE 1: INVENTORY DASHBOARD (EXPANDED WITH PAGINATION) */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === 'dashboard' && (
-            <div className="fade-in">
-                <div className="ent-kpi-row">
-                    <div className="ent-kpi-card">
-                        <div className="kpi-icon"><i className="fas fa-cubes"></i></div>
-                        <div className="kpi-data"><h3>{products.length}</h3><p>Global SKUs Cataloged</p></div>
-                    </div>
-                    <div className="ent-kpi-card success">
-                        <div className="kpi-icon"><i className="fas fa-vault"></i></div>
-                        <div className="kpi-data"><h3>₹{products.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</h3><p>Net Asset Valuation</p></div>
-                    </div>
-                    <div className="ent-kpi-card warning">
-                        <div className="kpi-icon"><i className="fas fa-triangle-exclamation"></i></div>
-                        <div className="kpi-data"><h3>{products.filter(p=>p.quantity < p.min_threshold).length}</h3><p>Depleting Nodes (Auto-PO Triggered)</p></div>
-                    </div>
+          {/* =================================================== */}
+          {/* TAB 2: SMART POS TERMINAL */}
+          {/* =================================================== */}
+          {activeTab === 'sales' && (
+            <div style={{ display: 'flex', gap: '30px', height: 'calc(100vh - 160px)', animation: 'fadeIn 0.5s ease' }}>
+              
+              {/* Product Grid Panel */}
+              <div style={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', gap: '20px' }}>
+                  <form onSubmit={handleBarcodeScan} style={{ flex: 1, position: 'relative' }}>
+                    <i className="fas fa-barcode" style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.5rem', color: '#4f46e5' }}></i>
+                    <input autoFocus value={barcodeInput} onChange={(e)=>setBarcodeInput(e.target.value)} placeholder="Hardware Scanner Ready. Focus here to scan..." style={{ width: '100%', boxSizing: 'border-box', height: '60px', paddingLeft: '60px', backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.2rem', fontWeight: 700, outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#4f46e5'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
+                  </form>
+                  <select value={posCategory} onChange={(e) => setPosCategory(e.target.value)} style={{ width: '200px', padding: '0 20px', borderRadius: '12px', border: '2px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 700, outline: 'none' }}>
+                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
 
-                <div className="ent-table-panel">
-                    <div className="panel-header">
-                        <div className="panel-search" style={{ width: '450px', display: 'flex', gap: '15px' }}>
-                            <div style={{ position: 'relative', flex: 1 }}>
-                                <i className="fas fa-search" style={{ position: 'absolute', left: '18px', top: '18px', color: '#94a3b8' }}></i>
-                                <input placeholder="Query Entity Name or SKU..." value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} style={{ width: '100%', height: '52px', background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '0 20px 0 50px', fontWeight: 600, outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#4f46e5'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
-                            </div>
-                            <select value={posCategory} onChange={(e) => setPosCategory(e.target.value)} style={{ height: '52px', padding: '0 20px', borderRadius: '12px', border: '1.5px solid #e2e8f0', backgroundColor: '#fff', fontWeight: 700, outline: 'none', cursor: 'pointer' }}>
-                                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        </div>
-                        {isAdmin && <button className="btn-commit" onClick={openAddModal} style={{ width: 'auto', padding: '0 30px', height: '52px' }}><i className="fas fa-plus" style={{ marginRight: '10px' }}></i> INITIALIZE SKU</button>}
+                <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px', paddingBottom: '20px', paddingRight: '10px' }}>
+                  {filteredProducts.filter(p => p.quantity > 0).map(p => (
+                    <div key={p.id} onClick={() => addToCart(p)} style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }} onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.1)'; }} onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.05)'; }}>
+                      {p.image_url ? (
+                        <img src={p.image_url.startsWith('http') ? p.image_url : `${API_BASE.replace('/api', '')}${p.image_url}`} style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '12px', marginBottom: '15px' }} alt="" />
+                      ) : (
+                        <div style={{ width: '100px', height: '100px', backgroundColor: '#f1f5f9', borderRadius: '12px', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: '#cbd5e1' }}><i className="fas fa-box"></i></div>
+                      )}
+                      <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</h4>
+                      <p style={{ margin: '0 0 10px 0', fontWeight: 900, color: '#10b981', fontSize: '1.2rem' }}>₹{p.price.toLocaleString()}</p>
+                      <span style={{ fontSize: '0.75rem', backgroundColor: '#f1f5f9', color: '#64748b', padding: '4px 10px', borderRadius: '20px', fontWeight: 700 }}>Stock: {p.quantity}</span>
                     </div>
-                    
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="ent-master-table">
-                            <thead>
-                                <tr>
-                                    <th>Entity Identity</th>
-                                    <th>SKU Reference</th>
-                                    <th>Classification</th>
-                                    <th>Volume / Status</th>
-                                    <th>Supply Chain Node</th>
-                                    <th>Unit Value</th>
-                                    {isAdmin && <th style={{ textAlign: 'right' }}>Operations</th>}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currentProducts.length === 0 ? (
-                                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '60px', color: '#94a3b8', fontSize: '1.1rem', fontWeight: 600 }}>No entities found matching query parameters.</td></tr>
-                                ) : (
-                                    currentProducts.map(p => (
-                                        <tr key={p.id}>
-                                            <td className="entity-cell">
-                                                {p.image_url ? <img src={p.image_url.startsWith('http') ? p.image_url : `${API_BASE.replace('/api','')}${p.image_url}`} alt="Product"/> : <div style={{ width: '50px', height: '50px', borderRadius: '15px', background: '#f1f5f9', display: 'grid', placeItems: 'center', color: '#cbd5e1', border: '2px dashed #e2e8f0' }}><i className="fas fa-image"></i></div>}
-                                                <div className="entity-name">{p.name}</div>
-                                            </td>
-                                            <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.85rem', color: '#64748b' }}>{p.sku}</td>
-                                            <td><span className="ent-tag" style={{ background: '#eff6ff', color: '#2563eb' }}>{p.category}</span></td>
-                                            <td>
-                                                <span className={`ent-badge ${p.quantity < p.min_threshold ? 'danger' : 'success'}`}>
-                                                    {p.quantity} Units {p.quantity < p.min_threshold && <i className="fas fa-exclamation-circle" style={{ marginLeft: '5px' }}></i>}
-                                                </span>
-                                            </td>
-                                            <td><span className="ent-tag" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569' }}><i className="fas fa-truck" style={{ marginRight: '5px' }}></i> {p.supplier_name || 'UNASSIGNED'}</span></td>
-                                            <td style={{ fontWeight: 900, color: '#0f172a', fontSize: '1.1rem' }}>₹{p.price.toLocaleString()}</td>
-                                            {isAdmin && (
-                                                <td style={{ textAlign: 'right' }}>
-                                                    <button onClick={() => openEditModal(p)} style={{ background: '#eef2ff', color: '#4f46e5', border: 'none', width: '40px', height: '40px', borderRadius: '10px', cursor: 'pointer', marginRight: '10px', transition: '0.2s' }} onMouseOver={(e)=>e.currentTarget.style.background='#c7d2fe'} onMouseOut={(e)=>e.currentTarget.style.background='#eef2ff'}><i className="fas fa-pen"></i></button>
-                                                    <button onClick={() => deleteProduct(p.id)} style={{ background: '#fef2f2', color: '#ef4444', border: 'none', width: '40px', height: '40px', borderRadius: '10px', cursor: 'pointer', transition: '0.2s' }} onMouseOver={(e)=>e.currentTarget.style.background='#fecaca'} onMouseOut={(e)=>e.currentTarget.style.background='#fef2f2'}><i className="fas fa-trash"></i></button>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination Engine */}
-                    <div style={{ padding: '25px 35px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                        <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600 }}>
-                            Rendering Record {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredProducts.length)} of {filteredProducts.length} Total Nodes
-                        </div>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button disabled={currentPage === 1} onClick={() => setCurrentPage(p=>p-1)} style={{ padding: '10px 20px', border: '1.5px solid #cbd5e1', background: '#fff', borderRadius: '10px', fontWeight: 700, cursor: currentPage === 1 ? 'not-allowed' : 'pointer', color: currentPage === 1 ? '#cbd5e1' : '#0f172a' }}>
-                                <i className="fas fa-chevron-left" style={{ marginRight: '8px' }}></i> PREV
-                            </button>
-                            <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p=>p+1)} style={{ padding: '10px 20px', border: '1.5px solid #cbd5e1', background: '#fff', borderRadius: '10px', fontWeight: 700, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', color: currentPage === totalPages ? '#cbd5e1' : '#0f172a' }}>
-                                NEXT <i className="fas fa-chevron-right" style={{ marginLeft: '8px' }}></i>
-                            </button>
-                        </div>
-                    </div>
+                  ))}
                 </div>
-            </div>
-        )}
+              </div>
 
-        {/* --------------------------------------------------------------------- */}
-        {/* MODULE 2: B2B SUPPLIER NETWORK */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === 'suppliers' && isManager && (
-            <div className="fade-in">
-                <div className="ent-table-panel">
-                    <div className="panel-header">
-                        <div>
-                            <h3 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>Vendor Supply Chain Registry</h3>
-                            <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>Manage external logistics partners and outstanding capital.</p>
-                        </div>
-                        <button className="btn-commit" onClick={()=>{ setEditingId('add-supplier'); setIsModalOpen(true); }} style={{ width: 'auto', padding: '0 30px', height: '52px' }}><i className="fas fa-user-plus" style={{ marginRight: '10px' }}></i> ADD VENDOR</button>
-                    </div>
-                    <table className="ent-master-table">
-                        <thead><tr><th>VENDOR IDENTITY</th><th>CONTACT PROTOCOL</th><th>SECTOR</th><th>OUTSTANDING BALANCE</th><th>ACTIONS</th></tr></thead>
-                        <tbody>
-                            {suppliers.map(s => (
-                                <tr key={s.id}>
-                                    <td>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                            <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: '#eef2ff', color: '#4f46e5', display: 'grid', placeItems: 'center', fontSize: '1.2rem', fontWeight: 900 }}>{s.name.charAt(0)}</div>
-                                            <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>{s.name}</div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div style={{ fontWeight: 700, color: '#334155' }}><i className="fas fa-user" style={{ color: '#94a3b8', marginRight: '8px' }}></i> {s.contact_person}</div>
-                                        <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '5px' }}><i className="fas fa-phone" style={{ color: '#94a3b8', marginRight: '8px' }}></i> {s.phone}</div>
-                                    </td>
-                                    <td><span className="ent-tag">{s.category}</span></td>
-                                    <td style={{ color: s.balance > 0 ? '#ef4444' : '#10b981', fontWeight: 900, fontSize: '1.1rem' }}>₹{parseFloat(s.balance).toLocaleString()}</td>
-                                    <td><button style={{ padding: '8px 20px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', color: '#0f172a', transition: '0.2s' }} onMouseOver={(e)=>e.currentTarget.style.background='#e2e8f0'} onMouseOut={(e)=>e.currentTarget.style.background='#f8fafc'}>VIEW PROFILE</button></td>
-                                </tr>
-                            ))}
-                            {suppliers.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8', fontWeight: 600 }}>No vendor data found.</td></tr>}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        )}
-
-        {/* --------------------------------------------------------------------- */}
-        {/* MODULE 3: AUTOMATED PURCHASE ORDERS (PO) */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === 'orders' && isManager && (
-            <div className="fade-in">
-                <div className="ent-table-panel">
-                    <div className="panel-header">
-                        <div>
-                            <h3 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>Automated Purchase Orders</h3>
-                            <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>Drafts generated automatically upon threshold breach.</p>
-                        </div>
-                        <div style={{ display: 'flex', gap: '15px' }}>
-                            <span className="ent-badge" style={{ background: '#fef3c7', color: '#b45309' }}>● DRAFT</span>
-                            <span className="ent-badge success">● RECEIVED</span>
-                        </div>
-                    </div>
-                    <table className="ent-master-table">
-                        <thead><tr><th>ORDER ID (UUID)</th><th>TARGET VENDOR</th><th>CREATION TIMESTAMP</th><th>ESTIMATED CAPITAL</th><th>LIFECYCLE STATUS</th><th>OPERATIONS</th></tr></thead>
-                        <tbody>
-                            {purchaseOrders.map(po => (
-                                <tr key={po.id}>
-                                    <td style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#4f46e5' }}>#PO-{po.id.toString().padStart(5, '0')}</td>
-                                    <td style={{ fontWeight: 800, color: '#0f172a' }}><i className="fas fa-truck" style={{ color: '#94a3b8', marginRight: '8px' }}></i> {po.supplier_name}</td>
-                                    <td style={{ color: '#64748b', fontWeight: 600 }}>{new Date(po.created_at).toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                                    <td style={{ fontWeight: 900, fontSize: '1.1rem' }}>₹{parseFloat(po.total_amount).toLocaleString()}</td>
-                                    <td><span className={`ent-badge ${po.status === 'RECEIVED' ? 'success' : 'warning'}`} style={{ padding: '8px 16px' }}>{po.status}</span></td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '10px' }}>
-                                            <button onClick={()=>openPOItems(po.id)} style={{ padding: '8px 15px', background: '#eef2ff', color: '#4f46e5', border: 'none', borderRadius: '8px', fontWeight: 800, cursor: 'pointer' }}><i className="fas fa-list-ul"></i> ITEMS</button>
-                                            {po.status === 'DRAFT' && (
-                                                <button onClick={()=>handleReceiveOrder(po.id)} style={{ padding: '8px 15px', background: '#ecfdf5', color: '#10b981', border: 'none', borderRadius: '8px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 6px rgba(16,185,129,0.2)' }}><i className="fas fa-box-open"></i> RECEIVE STOCK</button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {purchaseOrders.length === 0 && <tr><td colSpan="6" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8', fontWeight: 600 }}>Zero active purchase orders in pipeline.</td></tr>}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        )}
-
-        {/* --------------------------------------------------------------------- */}
-        {/* MODULE 4: SMART POS TERMINAL (HARDWARE ENABLED) */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === 'sales' && (
-            <div className="ent-pos-viewport fade-in">
-                
-                {/* Left: Hardware Scanner & Visual Catalog */}
-                <div className="catalog-section">
-                    <div className="pos-scanner-box">
-                        <div style={{ width: '60px', height: '60px', background: '#eef2ff', borderRadius: '15px', display: 'grid', placeItems: 'center' }}>
-                            <i className="fas fa-barcode-read" style={{ fontSize: '2rem', color: '#4f46e5' }}></i>
-                        </div>
-                        <form onSubmit={handleBarcodeScan} style={{ flex: 1 }}>
-                            <input ref={barcodeRef} placeholder="SCANNER LASER ACTIVE. Query SKU to enqueue..." value={barcodeInput} onChange={(e)=>setBarcodeInput(e.target.value)} style={{ width: '100%', height: '60px', border: 'none', outline: 'none', fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', background: 'transparent' }} />
-                        </form>
-                        <div style={{ textAlign: 'right', color: '#64748b' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '1px' }}>HARDWARE LINK</div>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#10b981' }}>● ONLINE</div>
-                        </div>
-                    </div>
-
-                    <div className="product-grid-premium">
-                        {products.filter(p=>p.quantity > 0).map(p => (
-                            <div key={p.id} className="pos-item-card" onClick={()=>addToCart(p)}>
-                                <div className="sku-image-box">
-                                    {p.image_url ? <img src={p.image_url.startsWith('http') ? p.image_url : `${API_BASE.replace('/api','')}${p.image_url}`} alt=""/> : <i className="fas fa-box" style={{ fontSize: '3rem', color: '#cbd5e1' }}></i>}
-                                </div>
-                                <h4 style={{ margin: '0 0 5px', fontSize: '1rem', color: '#0f172a', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</h4>
-                                <div style={{ fontWeight: 900, color: '#10b981', fontSize: '1.3rem', margin: '10px 0' }}>₹{p.price.toLocaleString()}</div>
-                                <div style={{ display: 'inline-block', background: p.quantity < 10 ? '#fef2f2' : '#f8fafc', color: p.quantity < 10 ? '#ef4444' : '#64748b', padding: '4px 12px', borderRadius: '30px', fontSize: '0.75rem', fontWeight: 800, border: `1px solid ${p.quantity < 10 ? '#fecaca' : '#e2e8f0'}` }}>
-                                    Vol: {p.quantity} Available
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+              {/* Cart / Checkout Panel */}
+              <div style={{ flex: 1, backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+                <div style={{ padding: '25px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}><i className="fas fa-shopping-cart" style={{ color: '#4f46e5', marginRight: '10px' }}></i> Active Session</h3>
+                  <span style={{ backgroundColor: '#4f46e5', color: '#fff', padding: '5px 15px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800 }}>{cart.length} ITEMS</span>
                 </div>
 
-                {/* Right: Real-time Checkout Cart */}
-                <div className="cart-sidebar">
-                    <div className="cart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                  {cart.length === 0 ? (
+                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#94a3b8' }}>
+                      <i className="fas fa-receipt" style={{ fontSize: '4rem', marginBottom: '20px', opacity: 0.5 }}></i>
+                      <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>Queue is empty. Scan to begin.</p>
+                    </div>
+                  ) : (
+                    cart.map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem' }}>{item.name}</h4>
+                          <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 800 }}>₹{item.price} / unit</span>
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <div style={{ width: '45px', height: '45px', background: '#eef2ff', borderRadius: '12px', color: '#4f46e5', display: 'grid', placeItems: 'center', fontSize: '1.2rem' }}><i className="fas fa-shopping-basket"></i></div>
-                            <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#0f172a', fontWeight: 900 }}>Checkout Queue</h3>
+                          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <button onClick={()=>updateCartQty(item.id, -1)} style={{ width: '32px', height: '32px', border: 'none', background: 'none', color: '#ef4444', fontWeight: 800, cursor: 'pointer' }}>-</button>
+                            <span style={{ width: '30px', textAlign: 'center', fontWeight: 800 }}>{item.cartQty}</span>
+                            <button onClick={()=>updateCartQty(item.id, 1)} style={{ width: '32px', height: '32px', border: 'none', background: 'none', color: '#10b981', fontWeight: 800, cursor: 'pointer' }}>+</button>
+                          </div>
+                          <div style={{ width: '80px', textAlign: 'right', fontWeight: 900, fontSize: '1.1rem' }}>
+                            ₹{(item.price * item.cartQty).toLocaleString()}
+                          </div>
                         </div>
-                        <span style={{ background: '#4f46e5', color: '#fff', padding: '6px 16px', borderRadius: '50px', fontSize: '0.85rem', fontWeight: 800, boxShadow: '0 4px 10px rgba(79,70,229,0.3)' }}>{cart.length} ITEMS</span>
-                    </div>
+                      </div>
+                    ))
+                  )}
+                </div>
 
-                    <div className="cart-body">
-                        {cart.length === 0 ? (
-                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#94a3b8', textAlign: 'center', opacity: 0.7 }}>
-                                <i className="fas fa-cash-register" style={{ fontSize: '5rem', marginBottom: '25px', color: '#cbd5e1' }}></i>
-                                <p style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>Terminal State: Idle</p>
-                                <p style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '10px' }}>Scan barcode or select node to enqueue.</p>
-                            </div>
-                        ) : (
-                            cart.map(item => (
-                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '20px 0', borderBottom: '1px solid #f1f5f9', animation: 'slideIn 0.3s' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem', marginBottom: '5px' }}>{item.name}</div>
-                                        <small style={{ color: '#10b981', fontWeight: 800, fontSize: '0.85rem' }}>₹{item.price.toLocaleString()} / unit</small>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '4px' }}>
-                                            <button onClick={()=>updateCartQty(item.id, -1)} style={{ width: '36px', height: '36px', background: '#fff', border: 'none', borderRadius: '8px', color: '#ef4444', fontWeight: 900, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', fontSize: '1.2rem' }}>-</button>
-                                            <span style={{ width: '40px', textAlign: 'center', fontWeight: 900, color: '#0f172a', fontSize: '1.1rem' }}>{item.cartQty}</span>
-                                            <button onClick={()=>updateCartQty(item.id, 1)} style={{ width: '36px', height: '36px', background: '#fff', border: 'none', borderRadius: '8px', color: '#10b981', fontWeight: 900, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', fontSize: '1.2rem' }}>+</button>
-                                        </div>
-                                        <div style={{ width: '90px', textAlign: 'right', fontWeight: 900, color: '#0f172a', fontSize: '1.3rem' }}>
-                                            ₹{(item.price * item.cartQty).toLocaleString()}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                <div style={{ padding: '30px', borderTop: '2px dashed #e2e8f0', backgroundColor: '#f8fafc' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', color: '#64748b', fontWeight: 600 }}>
+                    <span>Subtotal</span>
+                    <span>₹{cart.reduce((s,i)=>s+(i.price*i.cartQty),0).toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', color: '#64748b', fontWeight: 600 }}>
+                    <span>Tax (Inclusive 18%)</span>
+                    <span>₹0.00</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>Net Payable</span>
+                    <span style={{ fontSize: '2rem', fontWeight: 900, color: '#10b981' }}>₹{cart.reduce((s,i)=>s+(i.price*i.cartQty),0).toLocaleString()}</span>
+                  </div>
+                  <button onClick={checkout} disabled={cart.length === 0 || isCheckingOut} style={{ width: '100%', height: '60px', backgroundColor: cart.length === 0 ? '#cbd5e1' : '#4f46e5', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '1.2rem', fontWeight: 800, cursor: cart.length === 0 ? 'not-allowed' : 'pointer', transition: '0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+                    {isCheckingOut ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-print"></i> Generate Invoice & Sync</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
-                    <div className="cart-footer">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', color: '#64748b', fontWeight: 700, fontSize: '1rem' }}>
-                            <span>CGST/SGST (18%)</span>
-                            <span style={{ color: '#0f172a' }}>Inclusive</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 30px' }}>
-                            <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>Net Payable</span>
-                            <span style={{ fontSize: '2.5rem', fontWeight: 900, color: '#10b981' }}>₹{cart.reduce((s,i)=>s+(i.price*i.cartQty),0).toLocaleString()}</span>
-                        </div>
-                        <button onClick={processCheckout} disabled={isCheckingOut || cart.length === 0} className="btn-finalize">
-                            {isCheckingOut ? <><i className="fas fa-circle-notch fa-spin"></i> SYNCHRONIZING LEDGER...</> : <><i className="fas fa-file-invoice"></i> COMMIT TRANSACTION & PRINT</>}
+          {/* =================================================== */}
+          {/* TAB 3: SUPPLIER NETWORK (NEW B2B MODULE) */}
+          {/* =================================================== */}
+          {activeTab === 'suppliers' && isManager && (
+            <div style={{ animation: 'fadeIn 0.5s ease' }}>
+                <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                    <div style={{ padding: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}><i className="fas fa-truck-ramp-box" style={{ color: '#8b5cf6', marginRight: '10px' }}></i> Active Vendor Sourcing Network</h3>
+                        <button onClick={()=>{setEditingId('add-supplier'); setIsModalOpen(true)}} style={{ backgroundColor: '#8b5cf6', color: '#fff', border: 'none', padding: '12px 25px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer' }}>
+                            <i className="fas fa-user-plus"></i> Add Vendor
                         </button>
                     </div>
-                </div>
-            </div>
-        )}
-
-        {/* --------------------------------------------------------------------- */}
-        {/* MODULE 5: BUSINESS INTELLIGENCE (BI HUB) */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === 'analytics' && isManager && (
-            <div className="ent-bi-dashboard fade-in">
-                <div className="bi-stats-row">
-                    <div className="bi-card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px' }}>
-                            7-DAY REVENUE YIELD <i className="fas fa-chart-line-up" style={{ color: '#4f46e5', fontSize: '1.2rem' }}></i>
-                        </div>
-                        <div className="value">₹{analyticsData.salesTrend.reduce((a, b) => a + parseFloat(b.daily_revenue), 0).toLocaleString()}</div>
-                        <div className="trend">↑ POSITIVE TRAJECTORY</div>
-                    </div>
-                    <div className="bi-card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px' }}>
-                            CATALOG DIVERSIFICATION <i className="fas fa-layer-group" style={{ color: '#8b5cf6', fontSize: '1.2rem' }}></i>
-                        </div>
-                        <div className="value">{analyticsData.categorySales.length} Active Hubs</div>
-                        <div className="trend" style={{ color: '#8b5cf6' }}>MARKET SHARE IS OPTIMAL</div>
-                    </div>
-                    <div className="bi-card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '1px' }}>
-                            SUPPLY CHAIN RISK <i className="fas fa-triangle-exclamation" style={{ color: '#ef4444', fontSize: '1.2rem' }}></i>
-                        </div>
-                        <div className="value">{products.filter(p=>p.quantity < p.min_threshold).length} SKUs Depleted</div>
-                        <div className="trend danger">AUTO-PO SYSTEM ENGAGED</div>
-                    </div>
-                </div>
-
-                <div className="bi-charts-row">
-                    <div className="bi-chart-panel main">
-                        <div className="chart-title"><i className="fas fa-wave-pulse"></i> Revenue Progression Matrix</div>
-                        <div className="chart-container">
-                            <Line 
-                                data={{
-                                    labels: analyticsData.salesTrend.map(d => new Date(d.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })),
-                                    datasets: [{
-                                        label: 'Gross Daily Yield (₹)',
-                                        data: analyticsData.salesTrend.map(d => d.daily_revenue),
-                                        borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true,
-                                        tension: 0.45, pointRadius: 6, pointBackgroundColor: '#fff', pointBorderWidth: 3
-                                    }]
-                                }}
-                                options={{ 
-                                    maintainAspectRatio: false,
-                                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f172a', padding: 15, titleFont: { size: 14 } } },
-                                    scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
-                                }}
-                            />
-                        </div>
-                    </div>
-                    <div className="bi-chart-panel side">
-                        <div className="chart-title" style={{ color: '#8b5cf6' }}><i className="fas fa-chart-pie"></i> Sector Dominance</div>
-                        <div className="chart-container">
-                            <Doughnut 
-                                data={{
-                                    labels: analyticsData.categorySales.map(c => c.category),
-                                    datasets: [{
-                                        data: analyticsData.categorySales.map(c => c.revenue),
-                                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
-                                        borderWidth: 0, hoverOffset: 15
-                                    }]
-                                }}
-                                options={{ 
-                                    maintainAspectRatio: false, cutout: '75%',
-                                    plugins: { legend: { position: 'bottom', labels: { padding: 25, font: { size: 12, weight: 700 } } } }
-                                }}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="ent-table-panel" style={{ marginTop: '0' }}>
-                    <div className="panel-header">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <div style={{ width: '45px', height: '45px', background: '#fef3c7', borderRadius: '12px', color: '#d97706', display: 'grid', placeItems: 'center', fontSize: '1.2rem' }}><i className="fas fa-trophy"></i></div>
-                            <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#0f172a', fontWeight: 900 }}>High-Velocity Performance Nodes (Top 5)</h3>
-                        </div>
-                        <button className="btn-commit" style={{ width: 'auto', padding: '0 25px', height: '45px', background: '#0f172a', fontSize: '0.85rem' }} onClick={()=>window.print()}><i className="fas fa-file-export" style={{ marginRight: '8px' }}></i> EXPORT DATA</button>
-                    </div>
-                    <table className="ent-master-table">
-                        <thead><tr><th style={{ paddingLeft: '35px' }}>RANK</th><th>ENTITY IDENTITY</th><th>CLEARANCE VELOCITY</th><th>CAPITAL YIELD</th></tr></thead>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <thead>
+                            <tr style={{ background: '#f1f5f9' }}>
+                                <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Vendor Identity</th>
+                                <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Contact Protocol</th>
+                                <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Sector</th>
+                                <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Outstanding Balance</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            {analyticsData.topProducts.map((p, idx) => (
-                                <tr key={idx}>
-                                    <td style={{ paddingLeft: '35px' }}><div style={{ width: '38px', height: '38px', borderRadius: '50%', background: idx === 0 ? 'linear-gradient(135deg, #fef3c7, #fde68a)' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: idx === 0 ? '#d97706' : '#64748b', fontSize: '1.1rem', boxShadow: idx === 0 ? '0 4px 10px rgba(217, 119, 6, 0.2)' : 'none' }}>{idx+1}</div></td>
-                                    <td style={{ fontWeight: 900, color: '#0f172a', fontSize: '1.05rem' }}>{p.name}</td>
-                                    <td><span className="ent-badge success" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>{p.total_sold} units cleared</span></td>
-                                    <td style={{ fontWeight: 900, color: '#10b981', fontSize: '1.2rem' }}>₹{parseFloat(p.total_revenue).toLocaleString()}</td>
+                            {suppliers.map(s => (
+                                <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '20px', fontWeight: 800, color: '#0f172a' }}>{s.name}</td>
+                                    <td style={{ padding: '20px' }}>
+                                        <div style={{ fontWeight: 600 }}>{s.contact_person}</div>
+                                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}><i className="fas fa-phone"></i> {s.phone}</div>
+                                    </td>
+                                    <td style={{ padding: '20px' }}><span style={{ background: '#e0e7ff', color: '#4f46e5', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>{s.category}</span></td>
+                                    <td style={{ padding: '20px', fontWeight: 900, color: s.balance > 0 ? '#ef4444' : '#10b981', fontSize: '1.1rem' }}>₹{parseFloat(s.balance).toLocaleString()}</td>
                                 </tr>
                             ))}
+                            {suppliers.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8', fontWeight: 600 }}>No vendors registered.</td></tr>}
                         </tbody>
                     </table>
                 </div>
             </div>
-        )}
+          )}
 
-        {/* --------------------------------------------------------------------- */}
-        {/* MODULE 6: MASTER AUDIT LEDGER */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === 'ledger' && isManager && (
-            <div className="ent-table-panel fade-in">
-                <div className="panel-header" style={{ padding: '30px' }}>
-                    <div>
-                        <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', margin: 0 }}><i className="fas fa-clock-rotate-left" style={{ color: '#4f46e5', marginRight: '12px' }}></i> Immutable Audit Trail</h3>
-                        <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>Every single inventory mutation is logged cryptographically.</p>
+          {/* =================================================== */}
+          {/* TAB 4: AUTOMATED PURCHASE ORDERS (NEW) */}
+          {/* =================================================== */}
+          {activeTab === 'orders' && isManager && (
+            <div style={{ animation: 'fadeIn 0.5s ease' }}>
+                <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                    <div style={{ padding: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}><i className="fas fa-file-invoice-dollar" style={{ color: '#ec4899', marginRight: '10px' }}></i> Supply Chain Purchase Orders</h3>
+                            <p style={{ margin: '5px 0 0', fontSize: '0.85rem', color: '#64748b' }}>Drafts are generated automatically upon threshold breach.</p>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#ecfdf5', padding: '10px 20px', borderRadius: '12px', color: '#059669', fontWeight: 800, fontSize: '0.85rem' }}>
-                        <i className="fas fa-shield-check" style={{ fontSize: '1.2rem' }}></i> ENCRYPTED SYNC
-                    </div>
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="ent-master-table">
-                        <thead><tr><th>SERVER TIMESTAMP</th><th>TARGET NODE</th><th>OPERATION SIGNATURE</th><th>DELTA VOLUME</th><th>FINAL BALANCE</th><th>SYSTEM REMARKS</th></tr></thead>
-                        <tbody>
-                            {ledgerData.length === 0 ? (
-                                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '60px', color: '#94a3b8', fontWeight: 600, fontSize: '1.1rem' }}>No audit logs generated yet. Awaiting transactions.</td></tr>
-                            ) : (
-                                ledgerData.map(log => (
-                                    <tr key={log.id}>
-                                        <td style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>{new Date(log.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'medium' })}</td>
-                                        <td style={{ fontWeight: 900, color: '#0f172a' }}>{log.product_name}</td>
-                                        <td><span className="ent-tag" style={{ border: '1px solid #e2e8f0', background: '#f8fafc', color: '#334155' }}>{log.transaction_type}</span></td>
-                                        <td style={{ fontWeight: 900, fontSize: '1.3rem', color: log.quantity_changed > 0 ? '#10b981' : '#ef4444' }}>{log.quantity_changed > 0 ? `+${log.quantity_changed}` : log.quantity_changed}</td>
-                                        <td style={{ fontWeight: 900, color: '#0f172a', fontSize: '1.1rem' }}>{log.running_balance}</td>
-                                        <td style={{ fontStyle: 'italic', color: '#64748b', fontSize: '0.9rem' }}>{log.notes}</td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        )}
-
-        {/* --------------------------------------------------------------------- */}
-        {/* MODULE 7: ROLE BASED ACCESS CONTROL (USERS) */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === 'users' && isAdmin && (
-            <div className="ent-table-panel fade-in">
-                <div className="panel-header" style={{ padding: '30px' }}>
-                    <div>
-                        <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', margin: 0 }}><i className="fas fa-users-gear" style={{ color: '#ef4444', marginRight: '12px' }}></i> Network Access Governance</h3>
-                        <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>Strict Role-Based Access Control (RBAC) protocol matrix.</p>
-                    </div>
-                </div>
-                <table className="ent-master-table">
-                    <thead><tr><th style={{ paddingLeft: '35px' }}>NETWORK ID</th><th>SECURE IDENTITY</th><th>CURRENT PRIVILEGE</th><th>AUTHORITY ASSIGNMENT</th></tr></thead>
-                    <tbody>
-                        {usersList.map(user => (
-                            <tr key={user.id}>
-                                <td style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#94a3b8', paddingLeft: '35px' }}>#UID-{user.id.toString().padStart(4, '0')}</td>
-                                <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        <div style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', border: '2px solid #c7d2fe', borderRadius: '12px', display: 'grid', placeItems: 'center', color: '#4f46e5', fontWeight: 900, fontSize: '1.2rem' }}>{user.username.charAt(0).toUpperCase()}</div>
-                                        <div style={{ fontWeight: 900, color: '#0f172a', fontSize: '1.1rem' }}>
-                                            {user.username}
-                                            {user.username === auth.currentUser && <span className="ent-badge success" style={{ marginLeft: '12px', padding: '4px 10px', fontSize: '0.65rem' }}><i className="fas fa-circle" style={{ fontSize: '0.4rem', marginRight: '4px' }}></i> SELF SESSION</span>}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><span className={`role-badge ${user.role}`}>{user.role.toUpperCase()} LEVEL</span></td>
-                                <td>
-                                    <select className="ent-select" value={user.role} disabled={user.username === auth.currentUser} onChange={(e)=> {
-                                        axios.put(`${API_BASE}/users/${user.id}/role`, { role: e.target.value }).then(()=>{ fetchAdminModules(); showToast("Privilege escalation successful.", "success"); });
-                                    }} style={{ width: '250px', background: user.username === auth.currentUser ? '#f8fafc' : '#fff' }}>
-                                        <option value="staff">LEVEL 1: Standard POS Access</option>
-                                        <option value="manager">LEVEL 2: System Manager Access</option>
-                                        <option value="admin">LEVEL 3: Super Administrator</option>
-                                    </select>
-                                </td>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <thead>
+                            <tr style={{ background: '#f1f5f9' }}>
+                                <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Order ID</th>
+                                <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Target Vendor</th>
+                                <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Est. Capital</th>
+                                <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Lifecycle Status</th>
+                                <th style={{ padding: '20px', color: '#475569', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Operations</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {purchaseOrders.map(po => (
+                                <tr key={po.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '20px', fontFamily: 'monospace', fontWeight: 800, color: '#4f46e5' }}>#PO-{po.id.toString().padStart(4, '0')}</td>
+                                    <td style={{ padding: '20px', fontWeight: 800 }}>{po.supplier_name}</td>
+                                    <td style={{ padding: '20px', fontWeight: 900, fontSize: '1.1rem' }}>₹{parseFloat(po.total_amount).toLocaleString()}</td>
+                                    <td style={{ padding: '20px' }}>
+                                        <span style={{ background: po.status === 'RECEIVED' ? '#dcfce7' : '#fef3c7', color: po.status === 'RECEIVED' ? '#166534' : '#b45309', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800 }}>{po.status}</span>
+                                    </td>
+                                    <td style={{ padding: '20px' }}>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button onClick={()=>openPOItems(po.id)} style={{ padding: '8px 15px', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>View Items</button>
+                                            {po.status === 'DRAFT' && (
+                                                <button onClick={()=>handleReceiveOrder(po.id)} style={{ padding: '8px 15px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}><i className="fas fa-box-open"></i> Receive</button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {purchaseOrders.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8', fontWeight: 600 }}>Zero active purchase orders.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        )}
+          )}
+
+          {/* =================================================== */}
+          {/* TAB 5: BUSINESS ANALYTICS (BI HUB) */}
+          {/* =================================================== */}
+          {activeTab === 'analytics' && isManager && (
+            <div style={{ animation: 'fadeIn 0.5s ease' }}>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '30px', marginBottom: '30px' }}>
+                  <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', borderLeft: '6px solid #4f46e5' }}>
+                      <p style={{ margin: 0, color: '#64748b', fontWeight: 800, fontSize: '0.85rem' }}>7-DAY REVENUE YIELD</p>
+                      <h3 style={{ margin: '10px 0 0', fontSize: '2.5rem', color: '#0f172a', fontWeight: 900 }}>₹{analyticsData.salesTrend.reduce((a,b)=>a+parseFloat(b.daily_revenue), 0).toLocaleString()}</h3>
+                  </div>
+                  <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', borderLeft: '6px solid #f59e0b' }}>
+                      <p style={{ margin: 0, color: '#64748b', fontWeight: 800, fontSize: '0.85rem' }}>DEPLETING SKU NODES</p>
+                      <h3 style={{ margin: '10px 0 0', fontSize: '2.5rem', color: '#0f172a', fontWeight: 900 }}>{products.filter(p=>p.quantity < p.min_threshold).length} <span style={{fontSize: '1rem', color: '#ef4444'}}>Auto-PO Engaged</span></h3>
+                  </div>
+               </div>
+
+               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px', marginBottom: '30px' }}>
+                 {/* Trend Chart */}
+                 <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ margin: '0 0 25px 0', fontSize: '1.2rem', fontWeight: 800 }}><i className="fas fa-wave-pulse" style={{ color: '#4f46e5', marginRight: '10px' }}></i> Revenue Progression Matrix</h3>
+                    <div style={{ height: '300px' }}>
+                      <Line 
+                        data={{
+                          labels: analyticsData.salesTrend.map(d => new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })),
+                          datasets: [{
+                            label: 'Gross Daily Yield (₹)',
+                            data: analyticsData.salesTrend.map(d => d.daily_revenue),
+                            borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            fill: true, tension: 0.4, pointRadius: 5, pointBackgroundColor: '#fff'
+                          }]
+                        }}
+                        options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }}
+                      />
+                    </div>
+                 </div>
+
+                 {/* Doughnut Chart */}
+                 <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ margin: '0 0 25px 0', fontSize: '1.2rem', fontWeight: 800 }}><i className="fas fa-chart-pie" style={{ color: '#8b5cf6', marginRight: '10px' }}></i> Sector Dominance</h3>
+                    <div style={{ height: '300px' }}>
+                      <Doughnut 
+                        data={{
+                          labels: analyticsData.categorySales.map(c => c.category),
+                          datasets: [{
+                            data: analyticsData.categorySales.map(c => c.revenue),
+                            backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+                          }]
+                        }}
+                        options={{ maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } }}
+                      />
+                    </div>
+                 </div>
+               </div>
+
+               {/* Top Performers Table */}
+               <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+                   <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}><i className="fas fa-trophy" style={{ color: '#eab308', marginRight: '10px' }}></i> High-Velocity Performance Nodes (Top 5)</h3>
+                   <button onClick={() => window.print()} style={{ padding: '10px 20px', backgroundColor: '#0f172a', color: '#fff', borderRadius: '8px', border: 'none', fontWeight: 700, cursor: 'pointer' }}><i className="fas fa-download"></i> Export Data</button>
+                 </div>
+                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                   <thead style={{ backgroundColor: '#f8fafc' }}>
+                     <tr>
+                       <th style={{ padding: '15px', color: '#475569' }}>Rank</th>
+                       <th style={{ padding: '15px', color: '#475569' }}>Entity Identity</th>
+                       <th style={{ padding: '15px', color: '#475569' }}>Clearance Velocity</th>
+                       <th style={{ padding: '15px', color: '#475569', textAlign: 'right' }}>Capital Yield</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {analyticsData.topProducts.map((p, i) => (
+                       <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                         <td style={{ padding: '15px' }}><div style={{ width: '35px', height: '35px', borderRadius: '50%', backgroundColor: i === 0 ? '#fef08a' : '#f1f5f9', color: i === 0 ? '#ca8a04' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>{i + 1}</div></td>
+                         <td style={{ padding: '15px', fontWeight: 800 }}>{p.name}</td>
+                         <td style={{ padding: '15px' }}><span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '5px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700 }}>{p.total_sold} units</span></td>
+                         <td style={{ padding: '15px', textAlign: 'right', fontWeight: 900, color: '#10b981', fontSize: '1.2rem' }}>₹{parseFloat(p.total_revenue).toLocaleString()}</td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+          )}
+
+          {/* =================================================== */}
+          {/* TAB 6: AUDIT LEDGER */}
+          {/* =================================================== */}
+          {activeTab === 'ledger' && isManager && (
+            <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', animation: 'fadeIn 0.5s ease', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div style={{ padding: '25px 30px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}><i className="fas fa-clock-rotate-left" style={{ color: '#38bdf8', marginRight: '10px' }}></i> Immutable Transaction Ledger</h3>
+                <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 800 }}><i className="fas fa-shield-check"></i> ENCRYPTED AUDIT TRAIL</span>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#f8fafc' }}>
+                  <tr>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 800 }}>Timestamp</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 800 }}>Node / Entity</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 800 }}>Operation Signature</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 800 }}>Delta Volume</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 800 }}>Final Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledgerData.length === 0 ? (
+                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>Audit logs are empty.</td></tr>
+                  ) : (
+                    ledgerData.map(log => (
+                      <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '20px 30px', color: '#64748b', fontSize: '0.9rem' }}>{new Date(log.created_at).toLocaleString()}</td>
+                        <td style={{ padding: '20px 30px', fontWeight: 800 }}>{log.product_name} <br/><span style={{fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic'}}>{log.notes}</span></td>
+                        <td style={{ padding: '20px 30px' }}><span style={{ backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569', padding: '5px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800 }}>{log.transaction_type}</span></td>
+                        <td style={{ padding: '20px 30px', fontWeight: 900, fontSize: '1.2rem', color: log.quantity_changed > 0 ? '#10b981' : '#ef4444' }}>{log.quantity_changed > 0 ? `+${log.quantity_changed}` : log.quantity_changed}</td>
+                        <td style={{ padding: '20px 30px', fontWeight: 800, fontSize: '1.1rem' }}>{log.running_balance}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* =================================================== */}
+          {/* TAB 7: ACCESS CONTROL (USERS) */}
+          {/* =================================================== */}
+          {activeTab === 'users' && isAdmin && (
+            <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', animation: 'fadeIn 0.5s ease', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div style={{ padding: '25px 30px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}><i className="fas fa-user-shield" style={{ color: '#ef4444', marginRight: '10px' }}></i> Network Access Governance (RBAC)</h3>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#f8fafc' }}>
+                  <tr>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 800 }}>Network ID</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 800 }}>Secure Identity</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 800 }}>Clearance Level</th>
+                    <th style={{ padding: '20px 30px', color: '#475569', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 800 }}>Authority Assignment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usersList.map(u => (
+                    <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '20px 30px', fontFamily: 'monospace', color: '#94a3b8', fontWeight: 800 }}>#UID-{u.id.toString().padStart(4, '0')}</td>
+                      <td style={{ padding: '20px 30px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{ width: '35px', height: '35px', borderRadius: '8px', backgroundColor: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>{u.username.charAt(0).toUpperCase()}</div>
+                        {u.username}
+                        {u.username === auth.currentUser && <span style={{ fontSize: '0.6rem', backgroundColor: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '10px', marginLeft: '10px', fontWeight: 800 }}>SELF SESSION</span>}
+                      </td>
+                      <td style={{ padding: '20px 30px' }}>
+                        <span style={{ backgroundColor: u.role === 'admin' ? '#fee2e2' : u.role === 'manager' ? '#e0f2fe' : '#f1f5f9', color: u.role === 'admin' ? '#991b1b' : u.role === 'manager' ? '#075985' : '#475569', padding: '6px 15px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td style={{ padding: '20px 30px' }}>
+                        <select 
+                          value={u.role} 
+                          disabled={u.username === auth.currentUser}
+                          onChange={(e) => {
+                            axios.put(`${API_BASE}/users/${u.id}/role`, { role: e.target.value })
+                              .then(() => { fetchAdminData(); showToast(`Privilege escalated for ${u.username}`, "success"); })
+                              .catch(() => showToast("Failed to update role", "error"));
+                          }}
+                          style={{ width: '250px', height: '45px', padding: '0 15px', borderRadius: '8px', border: '1.5px solid #e2e8f0', outline: 'none', fontWeight: 700, cursor: u.username === auth.currentUser ? 'not-allowed' : 'pointer' }}
+                        >
+                          <option value="staff">LEVEL 1: Standard POS Access</option>
+                          <option value="manager">LEVEL 2: System Manager</option>
+                          <option value="admin">LEVEL 3: Super Administrator</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+        </div>
       </div>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* GLOBAL MODAL ENGINE */}
-      {/* --------------------------------------------------------------------- */}
-
-      {/* 1. Inventory & Supplier Injection Modal */}
-      <Modal isOpen={isModalOpen && editingId !== 'po-view'} onClose={()=>setIsModalOpen(false)} title={editingId === 'add-supplier' ? "Register New Vendor" : (editingId ? "Authorize Node Modification" : "Initialize New SKU Node")} width="800px">
+      {/* =================================================== */}
+      {/* GLOBAL MODAL ENGINE FOR B2B & INVENTORY */}
+      {/* =================================================== */}
+      
+      {/* Inventory & Supplier Modal */}
+      <Modal isOpen={isModalOpen && editingId !== 'po-view'} onClose={() => setIsModalOpen(false)} title={editingId === 'add-supplier' ? "Register New Vendor" : (editingId ? "Authorize Node Modification" : "Initialize New SKU Node")}>
         {editingId === 'add-supplier' ? (
-            <form onSubmit={handleAddSupplier} className="pro-form">
-                <div className="ent-input-group">
-                    <label>VENDOR / COMPANY NAME</label>
-                    <input className="pro-input" required value={supplierForm.name} onChange={e=>setSupplierForm({...supplierForm, name: e.target.value})} placeholder="e.g. Global Electronics Ltd." />
+          <form onSubmit={handleAddSupplier} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>VENDOR IDENTITY</label>
+                <input required value={supplierForm.name} onChange={e=>setSupplierForm({...supplierForm, name: e.target.value})} style={{ width: '100%', height: '50px', border: '2px solid #e2e8f0', borderRadius: '10px', padding: '0 15px', fontWeight: 600, outline: 'none' }} placeholder="Global Traders Ltd." />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>CONTACT REPRESENTATIVE</label>
+                    <input required value={supplierForm.contact_person} onChange={e=>setSupplierForm({...supplierForm, contact_person: e.target.value})} style={{ width: '100%', height: '50px', border: '2px solid #e2e8f0', borderRadius: '10px', padding: '0 15px', fontWeight: 600, outline: 'none' }} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
-                    <div className="ent-input-group">
-                        <label>CONTACT REPRESENTATIVE</label>
-                        <input className="pro-input" required value={supplierForm.contact_person} onChange={e=>setSupplierForm({...supplierForm, contact_person: e.target.value})} placeholder="Full Name" />
-                    </div>
-                    <div className="ent-input-group">
-                        <label>CONTACT PROTOCOL (PHONE)</label>
-                        <input className="pro-input" required value={supplierForm.phone} onChange={e=>setSupplierForm({...supplierForm, phone: e.target.value})} placeholder="+91 XXXXX XXXXX" />
-                    </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>CONTACT PROTOCOL (PHONE)</label>
+                    <input required value={supplierForm.phone} onChange={e=>setSupplierForm({...supplierForm, phone: e.target.value})} style={{ width: '100%', height: '50px', border: '2px solid #e2e8f0', borderRadius: '10px', padding: '0 15px', fontWeight: 600, outline: 'none' }} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
-                    <div className="ent-input-group">
-                        <label>ELECTRONIC MAIL</label>
-                        <input className="pro-input" type="email" value={supplierForm.email} onChange={e=>setSupplierForm({...supplierForm, email: e.target.value})} placeholder="vendor@domain.com" />
-                    </div>
-                    <div className="ent-input-group">
-                        <label>SECTOR / CATEGORY</label>
-                        <input className="pro-input" required value={supplierForm.category} onChange={e=>setSupplierForm({...supplierForm, category: e.target.value})} placeholder="e.g. Peripherals" />
-                    </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>ELECTRONIC MAIL</label>
+                    <input type="email" value={supplierForm.email} onChange={e=>setSupplierForm({...supplierForm, email: e.target.value})} style={{ width: '100%', height: '50px', border: '2px solid #e2e8f0', borderRadius: '10px', padding: '0 15px', fontWeight: 600, outline: 'none' }} />
                 </div>
-                <button type="submit" className="btn-commit" style={{ marginTop: '20px' }}><i className="fas fa-network-wired" style={{ marginRight: '10px' }}></i> INJECT VENDOR TO NETWORK</button>
-            </form>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>SECTOR</label>
+                    <input required value={supplierForm.category} onChange={e=>setSupplierForm({...supplierForm, category: e.target.value})} style={{ width: '100%', height: '50px', border: '2px solid #e2e8f0', borderRadius: '10px', padding: '0 15px', fontWeight: 600, outline: 'none' }} placeholder="e.g. Electronics" />
+                </div>
+            </div>
+            <button type="submit" style={{ height: '60px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '1.1rem', marginTop: '10px', cursor: 'pointer' }}>INJECT VENDOR TO NETWORK</button>
+          </form>
         ) : (
-            <form onSubmit={handleInventorySubmit} className="pro-form">
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '25px' }}>
-                    <div className="ent-input-group">
-                        <label>ENTITY DESIGNATION (NAME)</label>
-                        <input className="pro-input" required value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} placeholder="Full Product Title" />
-                    </div>
-                    <div className="ent-input-group">
-                        <label>SKU IDENTIFIER</label>
-                        <input className="pro-input" required value={formData.sku} onChange={e=>setFormData({...formData, sku: e.target.value})} placeholder="Unique Barcode/ID" />
-                    </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '25px' }}>
-                    <div className="ent-input-group">
-                        <label>MARKET SEGMENT</label>
-                        <input className="pro-input" required value={formData.category} onChange={e=>setFormData({...formData, category: e.target.value})} placeholder="Category Name" />
-                    </div>
-                    <div className="ent-input-group">
-                        <label>INITIAL VOLUME</label>
-                        <input className="pro-input" required type="number" value={formData.quantity} onChange={e=>setFormData({...formData, quantity: e.target.value})} placeholder="0" />
-                    </div>
-                    <div className="ent-input-group">
-                        <label>RETAIL YIELD (₹)</label>
-                        <input className="pro-input" required type="number" value={formData.price} onChange={e=>setFormData({...formData, price: e.target.value})} placeholder="0.00" />
-                    </div>
-                </div>
-                
-                {/* Supply Chain Integration Segment */}
-                <div style={{ background: '#f8fafc', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
-                    <h4 style={{ margin: '0 0 20px', fontSize: '0.9rem', color: '#475569', fontWeight: 900, letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '10px' }}><i className="fas fa-link" style={{ color: '#4f46e5' }}></i> SUPPLY CHAIN INTEGRATION</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
-                        <div className="ent-input-group">
-                            <label>B2B SOURCING COST (₹)</label>
-                            <input className="pro-input" required type="number" value={formData.cost_price} onChange={e=>setFormData({...formData, cost_price: e.target.value})} placeholder="Wholesale Cost" style={{ background: '#fff' }} />
-                        </div>
-                        <div className="ent-input-group">
-                            <label>AUTO-PO THRESHOLD</label>
-                            <input className="pro-input" required type="number" value={formData.min_threshold} onChange={e=>setFormData({...formData, min_threshold: e.target.value})} placeholder="Minimum Stock Limit" style={{ background: '#fff' }} />
-                        </div>
-                    </div>
-                    <div className="ent-input-group" style={{ marginTop: '25px' }}>
-                        <label>ASSIGNED VENDOR NODE</label>
-                        <select className="ent-select" required value={formData.supplier_id} onChange={e=>setFormData({...formData, supplier_id: e.target.value})} style={{ width: '100%', background: '#fff' }}>
-                            <option value="">-- UNLINKED (Select Vendor to Enable Auto-PO) --</option>
-                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.category})</option>)}
-                        </select>
-                    </div>
-                </div>
+          <form onSubmit={handleInventorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>ENTITY DESIGNATION (NAME)</label>
+                <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '50px', padding: '0 15px', border: '2px solid #e2e8f0', borderRadius: '10px', outline: 'none', fontWeight: 600 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>SKU IDENTIFIER</label>
+                <input required value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '50px', padding: '0 15px', border: '2px solid #e2e8f0', borderRadius: '10px', outline: 'none', fontWeight: 600 }} />
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>MARKET SEGMENT</label>
+                <input required value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '50px', padding: '0 15px', border: '2px solid #e2e8f0', borderRadius: '10px', outline: 'none', fontWeight: 600 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>INITIAL VOLUME</label>
+                <input required type="number" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '50px', padding: '0 15px', border: '2px solid #e2e8f0', borderRadius: '10px', outline: 'none', fontWeight: 600 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>RETAIL YIELD (₹)</label>
+                <input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} style={{ width: '100%', boxSizing: 'border-box', height: '50px', padding: '0 15px', border: '2px solid #e2e8f0', borderRadius: '10px', outline: 'none', fontWeight: 600 }} />
+              </div>
+            </div>
 
-                <div className="ent-input-group" style={{ marginTop: '20px' }}>
-                    <label>VISUAL ASSET UPLOAD</label>
-                    <div style={{ border: '2px dashed #cbd5e1', padding: '40px', borderRadius: '16px', textAlign: 'center', backgroundColor: '#f8fafc', transition: '0.3s', cursor: 'pointer' }} onMouseOver={(e)=>e.currentTarget.style.borderColor='#4f46e5'} onMouseOut={(e)=>e.currentTarget.style.borderColor='#cbd5e1'}>
-                        <input type="file" id="fileUpload" onChange={e => setFormData({...formData, image: e.target.files[0]})} style={{ display: 'none' }} />
-                        <label htmlFor="fileUpload" style={{ cursor: 'pointer', color: '#4f46e5', fontWeight: 800, fontSize: '1.1rem', margin: 0 }}>
-                            <div style={{ width: '60px', height: '60px', background: '#eef2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}><i className="fas fa-cloud-arrow-up" style={{ fontSize: '1.5rem' }}></i></div>
-                            {formData.image ? formData.image.name : "Inject Image to Cloudinary Array"}
-                        </label>
+            {/* B2B Sourcing Section */}
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                <h4 style={{ margin: '0 0 15px', color: '#475569', fontSize: '0.85rem', fontWeight: 900 }}><i className="fas fa-link" style={{ color: '#4f46e5' }}></i> SUPPLY CHAIN INTEGRATION</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>B2B SOURCING COST (₹)</label>
+                        <input required type="number" value={formData.cost_price} onChange={e => setFormData({...formData, cost_price: e.target.value})} style={{ width: '100%', height: '50px', padding: '0 15px', border: '2px solid #e2e8f0', borderRadius: '10px', outline: 'none', fontWeight: 600, background: '#fff' }} />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>AUTO-PO THRESHOLD</label>
+                        <input required type="number" value={formData.min_threshold} onChange={e => setFormData({...formData, min_threshold: e.target.value})} style={{ width: '100%', height: '50px', padding: '0 15px', border: '2px solid #e2e8f0', borderRadius: '10px', outline: 'none', fontWeight: 600, background: '#fff' }} />
                     </div>
                 </div>
+                <div style={{ marginTop: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>ASSIGNED VENDOR NODE</label>
+                    <select value={formData.supplier_id} onChange={e => setFormData({...formData, supplier_id: e.target.value})} style={{ width: '100%', height: '50px', padding: '0 15px', border: '2px solid #e2e8f0', borderRadius: '10px', outline: 'none', fontWeight: 700, background: '#fff' }}>
+                        <option value="">-- UNLINKED (Select Vendor to Enable Auto-PO) --</option>
+                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.category})</option>)}
+                    </select>
+                </div>
+            </div>
 
-                <button type="submit" className="btn-commit" style={{ marginTop: '25px', height: '60px', fontSize: '1.1rem' }}>{editingId ? <><i className="fas fa-satellite-dish"></i> AUTHORIZE CLOUD UPDATE</> : <><i className="fas fa-rocket"></i> INITIALIZE NEW REGISTRY</>}</button>
-            </form>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 800, fontSize: '0.8rem', color: '#64748b' }}>VISUAL ASSET (IMAGE)</label>
+              <div style={{ border: '2px dashed #cbd5e1', padding: '30px', borderRadius: '12px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                <input type="file" id="fileUpload" onChange={e => setFormData({...formData, image: e.target.files[0]})} style={{ display: 'none' }} />
+                <label htmlFor="fileUpload" style={{ cursor: 'pointer', color: '#4f46e5', fontWeight: 800 }}>
+                  <i className="fas fa-cloud-upload-alt" style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}></i>
+                  {formData.image ? formData.image.name : "Inject Image to Cloudinary Array"}
+                </label>
+              </div>
+            </div>
+            
+            <button type="submit" style={{ width: '100%', height: '60px', backgroundColor: '#4f46e5', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', marginTop: '10px' }}>
+              {editingId ? 'AUTHORIZE CLOUD UPDATE' : 'INITIALIZE NEW REGISTRY'}
+            </button>
+          </form>
         )}
       </Modal>
 
-      {/* 2. PO Item Breakdown Modal */}
+      {/* PO Breakdown Modal */}
       <Modal isOpen={isModalOpen && editingId === 'po-view'} onClose={()=>setIsModalOpen(false)} title="Purchase Order Breakdown Log" width="800px">
-        <table className="ent-master-table" style={{ border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
-            <thead style={{ background: '#f8fafc' }}><tr><th style={{ paddingLeft: '25px' }}>TARGET SKU</th><th>ENTITY</th><th>REQUESTED VOL</th><th>B2B RATE</th><th>SUBTOTAL</th></tr></thead>
+        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+            <thead style={{ background: '#f8fafc' }}>
+                <tr>
+                    <th style={{ padding: '15px 20px', color: '#475569', fontSize: '0.8rem', textTransform: 'uppercase' }}>TARGET SKU</th>
+                    <th style={{ padding: '15px 20px', color: '#475569', fontSize: '0.8rem', textTransform: 'uppercase' }}>ENTITY</th>
+                    <th style={{ padding: '15px 20px', color: '#475569', fontSize: '0.8rem', textTransform: 'uppercase' }}>REQUESTED VOL</th>
+                    <th style={{ padding: '15px 20px', color: '#475569', fontSize: '0.8rem', textTransform: 'uppercase' }}>B2B RATE</th>
+                    <th style={{ padding: '15px 20px', color: '#475569', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'right' }}>SUBTOTAL</th>
+                </tr>
+            </thead>
             <tbody>
                 {selectedPOItems.map((item, idx) => (
-                    <tr key={idx}>
-                        <td style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#64748b', paddingLeft: '25px' }}>{item.sku}</td>
-                        <td style={{ fontWeight: 900, color: '#0f172a' }}>{item.product_name}</td>
-                        <td><span className="ent-badge warning" style={{ fontSize: '0.85rem' }}>{item.quantity_ordered} Units</span></td>
-                        <td style={{ fontWeight: 700 }}>₹{item.unit_cost}</td>
-                        <td style={{ fontWeight: 900, color: '#10b981', fontSize: '1.1rem' }}>₹{(item.quantity_ordered * item.unit_cost).toLocaleString()}</td>
+                    <tr key={idx} style={{ borderTop: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '15px 20px', fontFamily: 'monospace', color: '#64748b', fontWeight: 700 }}>{item.sku}</td>
+                        <td style={{ padding: '15px 20px', fontWeight: 800 }}>{item.product_name}</td>
+                        <td style={{ padding: '15px 20px' }}><span style={{ background: '#fef3c7', color: '#b45309', padding: '4px 10px', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem' }}>{item.quantity_ordered} Units</span></td>
+                        <td style={{ padding: '15px 20px', fontWeight: 700 }}>₹{item.unit_cost}</td>
+                        <td style={{ padding: '15px 20px', fontWeight: 900, color: '#10b981', textAlign: 'right', fontSize: '1.1rem' }}>₹{(item.quantity_ordered * item.unit_cost).toLocaleString()}</td>
                     </tr>
                 ))}
             </tbody>
         </table>
-        <div style={{ padding: '25px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', marginTop: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>Estimated Capital Required</span>
+        <div style={{ padding: '25px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Estimated Capital Required</span>
             <span style={{ fontSize: '2rem', fontWeight: 900, color: '#ef4444' }}>₹{selectedPOItems.reduce((a,b)=>a+(b.quantity_ordered*b.unit_cost),0).toLocaleString()}</span>
         </div>
       </Modal>
